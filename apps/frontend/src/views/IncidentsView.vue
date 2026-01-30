@@ -3,7 +3,7 @@ import { ref, onMounted, computed, inject, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type Incident } from '../composables/useApi'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const api = useApi()
 const currentProjectId = inject<Ref<number | null>>('currentProjectId', ref(null))
 const incidents = ref<Incident[]>([])
@@ -35,20 +35,24 @@ async function analyzeIncident(incident: Incident) {
   aiAnalysis.value = null
   showAIModal.value = true
 
+  // Map locale to API language param (cs, en)
+  const lang = locale.value === 'cs' ? 'cs' : 'en'
+
   try {
-    const response = await fetch(`http://localhost:8000/api/ai/incidents/${incident.id}/analyze`, {
+    const response = await fetch(`http://localhost:8000/api/ai/incidents/${incident.id}/analyze?lang=${lang}`, {
       method: 'POST',
     })
     aiAnalysis.value = await response.json()
   } catch (e) {
     console.error('Failed to analyze incident:', e)
+    const isCs = locale.value === 'cs'
     aiAnalysis.value = {
       ai_powered: false,
       severity_suggestion: 'unknown',
       confidence: 0,
-      root_cause_hypothesis: ['Analysis failed'],
-      recommended_actions: ['Try again later'],
-      estimated_impact: 'Unknown',
+      root_cause_hypothesis: [isCs ? 'Analýza selhala' : 'Analysis failed'],
+      recommended_actions: [isCs ? 'Zkuste to znovu později' : 'Try again later'],
+      estimated_impact: isCs ? 'Neznámé' : 'Unknown',
       analyzed_at: new Date().toISOString(),
     }
   } finally {

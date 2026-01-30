@@ -1,6 +1,6 @@
 """AI-powered features router."""
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from database import get_db
 from services.ai_triage_service import ai_triage
@@ -10,11 +10,17 @@ router = APIRouter(prefix="/api/ai", tags=["ai"])
 
 
 @router.post("/incidents/{incident_id}/analyze")
-async def analyze_incident(incident_id: int) -> dict:
+async def analyze_incident(
+    incident_id: int,
+    lang: str = Query("en", description="Response language: 'en' or 'cs'")
+) -> dict:
     """AI-powered incident analysis.
 
     Returns severity suggestion, root cause hypothesis,
     recommended actions, and impact assessment.
+
+    Query params:
+        lang: Response language ('en' for English, 'cs' for Czech)
     """
     with get_db() as conn:
         cursor = conn.execute(
@@ -23,7 +29,7 @@ async def analyze_incident(incident_id: int) -> dict:
         if not cursor.fetchone():
             raise HTTPException(status_code=404, detail="Incident not found")
 
-    analysis = await ai_triage.analyze_incident(incident_id)
+    analysis = await ai_triage.analyze_incident(incident_id, language=lang)
 
     # Log AI analysis action
     audit_service.log_action(
@@ -50,11 +56,17 @@ async def get_runbook_suggestion(incident_id: int) -> dict:
 
 
 @router.post("/incidents/{incident_id}/auto-triage")
-async def auto_triage_incident(incident_id: int) -> dict:
+async def auto_triage_incident(
+    incident_id: int,
+    lang: str = Query("en", description="Response language: 'en' or 'cs'")
+) -> dict:
     """Automatically triage incident using AI.
 
     Analyzes incident, suggests severity, and optionally
     updates incident with AI recommendations.
+
+    Query params:
+        lang: Response language ('en' for English, 'cs' for Czech)
     """
     with get_db() as conn:
         cursor = conn.execute(
@@ -67,7 +79,7 @@ async def auto_triage_incident(incident_id: int) -> dict:
         old_value = dict(incident)
 
     # Get AI analysis
-    analysis = await ai_triage.analyze_incident(incident_id)
+    analysis = await ai_triage.analyze_incident(incident_id, language=lang)
     runbook = await ai_triage.suggest_runbook(incident_id)
 
     # Auto-update severity if AI is confident

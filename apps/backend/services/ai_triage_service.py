@@ -13,7 +13,7 @@ class AITriageService:
     """Service for AI-powered incident analysis and recommendations."""
 
     def __init__(self):
-        self.model = "claude-3-haiku-20240307"  # Fast & cheap for triage
+        self.model = "claude-3-5-haiku-20241022"  # Haiku 3.5 - fast & smart
         self.base_url = "https://api.anthropic.com/v1/messages"
 
     @property
@@ -21,8 +21,12 @@ class AITriageService:
         """Get API key at request time (not cached at init)."""
         return os.getenv("ANTHROPIC_API_KEY")
 
-    async def analyze_incident(self, incident_id: int) -> dict[str, Any]:
+    async def analyze_incident(self, incident_id: int, language: str = "en") -> dict[str, Any]:
         """Analyze incident and provide AI recommendations.
+
+        Args:
+            incident_id: The incident to analyze
+            language: Response language ('en' for English, 'cs' for Czech)
 
         Returns:
             - severity_suggestion: Recommended severity level
@@ -35,9 +39,9 @@ class AITriageService:
         context = await self._gather_incident_context(incident_id)
 
         if not self.api_key:
-            return self._fallback_analysis(context)
+            return self._fallback_analysis(context, language)
 
-        prompt = self._build_analysis_prompt(context)
+        prompt = self._build_analysis_prompt(context, language)
 
         try:
             async with httpx.AsyncClient() as client:
@@ -130,13 +134,23 @@ class AITriageService:
             "recent_changes": recent_changes,
         }
 
-    def _build_analysis_prompt(self, context: dict[str, Any]) -> str:
+    def _build_analysis_prompt(self, context: dict[str, Any], language: str = "en") -> str:
         """Build prompt for AI analysis."""
         incident = context["incident"]
         monitor = context.get("monitor")
         metrics = context.get("recent_metrics", [])
 
-        prompt = f"""You are an expert SRE analyzing an incident. Provide actionable insights.
+        # Language-specific instructions
+        if language == "cs":
+            lang_instruction = "DŮLEŽITÉ: Odpověz v češtině. Všechny texty v JSON musí být česky."
+            role_desc = "Jsi expert SRE analyzující incident. Poskytni praktické poznatky."
+        else:
+            lang_instruction = "Respond in English."
+            role_desc = "You are an expert SRE analyzing an incident. Provide actionable insights."
+
+        prompt = f"""{role_desc}
+
+{lang_instruction}
 
 INCIDENT:
 - Title: {incident['title']}
@@ -200,32 +214,47 @@ Be concise and actionable."""
             **analysis,
         }
 
-    def _fallback_analysis(self, context: dict[str, Any]) -> dict[str, Any]:
+    def _fallback_analysis(self, context: dict[str, Any], language: str = "en") -> dict[str, Any]:
         """Rule-based fallback when AI is unavailable."""
         incident = context["incident"]
         metrics = context.get("recent_metrics", [])
 
         # Simple heuristics
         severity = incident.get("severity", "warning")
-        actions = ["Check service logs", "Verify network connectivity"]
+
+        # Language-specific fallback texts
+        if language == "cs":
+            actions = ["Zkontrolovat logy služby", "Ověřit síťové připojení"]
+            hypothesis = [
+                "Služba nedostupná",
+                "Problémy se sítí",
+                "Vyčerpání prostředků",
+            ]
+            impact = "Neznámé - nutné ruční posouzení"
+            escalate_msg = "Služba má opakované selhání - eskalujte okamžitě"
+        else:
+            actions = ["Check service logs", "Verify network connectivity"]
+            hypothesis = [
+                "Service unreachable",
+                "Network issues",
+                "Resource exhaustion",
+            ]
+            impact = "Unknown - manual assessment required"
+            escalate_msg = "Service has multiple failures - escalate immediately"
 
         if metrics:
             down_count = sum(1 for m in metrics if not m.get("is_up"))
             if down_count > 3:
                 severity = "critical"
-                actions.insert(0, "Service has multiple failures - escalate immediately")
+                actions.insert(0, escalate_msg)
 
         return {
             "ai_powered": False,
             "severity_suggestion": severity,
             "confidence": 0.5,
-            "root_cause_hypothesis": [
-                "Service unreachable",
-                "Network issues",
-                "Resource exhaustion",
-            ],
+            "root_cause_hypothesis": hypothesis,
             "recommended_actions": actions,
-            "estimated_impact": "Unknown - manual assessment required",
+            "estimated_impact": impact,
             "analyzed_at": datetime.now().isoformat(),
             "incident_id": incident["id"],
         }
