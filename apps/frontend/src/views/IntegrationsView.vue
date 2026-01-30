@@ -151,8 +151,6 @@ async function syncGoogleToken() {
 
     // Fetch user info to verify connection works
     googleUserInfo.value = await getGoogleUserInfo()
-
-    console.log('Google synced successfully:', googleUserInfo.value)
   } catch (e) {
     console.error('Failed to sync Google token:', e)
   } finally {
@@ -166,7 +164,6 @@ async function loadCalendarEvents() {
   try {
     const events = await getCalendarEvents('primary', 14)
     calendarEvents.value = events
-    console.log('Loaded calendar events:', events)
   } catch (e) {
     console.error('Failed to load calendar events:', e)
     eventsError.value = e instanceof Error ? e.message : 'Failed to load events'
@@ -194,7 +191,6 @@ async function syncTasksToCalendar() {
   try {
     const result = await syncAllTasksToCalendar()
     syncResult.value = result
-    console.log('Sync result:', result)
     // Reload events to show newly synced
     await loadCalendarEvents()
   } catch (e) {
@@ -211,7 +207,6 @@ async function syncTasksFromCalendar() {
   try {
     const result = await syncFromCalendar()
     syncFromResult.value = result
-    console.log('Sync from calendar result:', result)
   } catch (e) {
     console.error('Failed to sync from calendar:', e)
     eventsError.value = e instanceof Error ? e.message : 'Failed to sync from calendar'

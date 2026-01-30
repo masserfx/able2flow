@@ -188,7 +188,6 @@ watch(() => props.show, (show) => {
         dueTime.value = ''
       }
 
-      // TODO: start_date, end_date when backend supports it
       startDate.value = ''
       startTime.value = ''
       endDate.value = ''

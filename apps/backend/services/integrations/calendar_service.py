@@ -1,5 +1,6 @@
 """Google Calendar integration service."""
 
+import logging
 import os
 from datetime import datetime, timedelta
 from typing import Optional
@@ -8,7 +9,8 @@ import httpx
 from database import get_db
 from auth.token_service import TokenService
 
-# Clerk configuration
+logger = logging.getLogger(__name__)
+
 CLERK_SECRET_KEY = os.getenv("CLERK_SECRET_KEY", "")
 
 
@@ -26,18 +28,15 @@ class CalendarService:
         if self._access_token:
             return self._access_token
 
-        # First try to get token from Clerk
         clerk_token = await self._get_clerk_google_token()
         if clerk_token:
             self._access_token = clerk_token
             return self._access_token
 
-        # Fallback to local token storage
         token_data = TokenService.get_token(self.user_id, "google")
         if not token_data:
             return None
 
-        # Check if token is expired
         if TokenService.is_token_expired(self.user_id, "google"):
             refreshed = TokenService.refresh_google_token(self.user_id)
             if not refreshed:
@@ -50,10 +49,8 @@ class CalendarService:
     async def _get_clerk_google_token(self) -> Optional[str]:
         """Get Google OAuth token from Clerk Backend API."""
         if not CLERK_SECRET_KEY:
-            print(f"[CalendarService] No CLERK_SECRET_KEY")
+            logger.warning("CLERK_SECRET_KEY not configured")
             return None
-
-        print(f"[CalendarService] Fetching token for user: {self.user_id}")
 
         async with httpx.AsyncClient() as client:
             try:
@@ -65,18 +62,13 @@ class CalendarService:
                     }
                 )
 
-                print(f"[CalendarService] Clerk response status: {response.status_code}")
-
                 if response.status_code == 200:
                     data = response.json()
                     if data and len(data) > 0:
-                        token = data[0].get("token")
-                        print(f"[CalendarService] Got token: {token[:30] if token else 'None'}...")
-                        return token
-                print(f"[CalendarService] No token found in response")
+                        return data[0].get("token")
                 return None
             except Exception as e:
-                print(f"[CalendarService] Error: {e}")
+                logger.error("Failed to get Clerk token: %s", str(e))
                 return None
 
     async def _make_request(
@@ -88,7 +80,7 @@ class CalendarService:
         """Make authenticated request to Calendar API."""
         access_token = await self._get_access_token()
         if not access_token:
-            print(f"[CalendarService] _make_request: No access token!")
+            logger.warning("No access token available")
             return None
 
         url = f"{self.CALENDAR_API_BASE}{endpoint}"
@@ -96,8 +88,6 @@ class CalendarService:
             "Authorization": f"Bearer {access_token}",
             "Content-Type": "application/json",
         }
-
-        print(f"[CalendarService] _make_request: {method} {endpoint}")
 
         async with httpx.AsyncClient() as client:
             try:
@@ -112,15 +102,13 @@ class CalendarService:
                 else:
                     return None
 
-                print(f"[CalendarService] Response status: {response.status_code}")
-
                 if response.status_code in [200, 201]:
                     return response.json() if response.content else {}
 
-                print(f"[CalendarService] Error response: {response.text[:200]}")
+                logger.warning("Calendar API error: %d", response.status_code)
                 return None
             except Exception as e:
-                print(f"[CalendarService] Request exception: {e}")
+                logger.error("Calendar API request failed: %s", str(e))
                 return None
 
     async def list_calendars(self) -> list:
@@ -202,22 +190,44 @@ class CalendarService:
         result = await self._make_request("DELETE", f"/calendars/{calendar_id}/events/{event_id}")
         return result is not None
 
+    async def get_event(
+        self,
+        event_id: str,
+        calendar_id: str = "primary",
+    ) -> Optional[dict]:
+        """Get a single calendar event by ID."""
+        return await self._make_request("GET", f"/calendars/{calendar_id}/events/{event_id}")
+
+    def _get_done_column_id(self, cursor, task_project_id: int) -> Optional[int]:
+        """Get the 'Done' column ID for a project."""
+        cursor.execute(
+            "SELECT id FROM columns WHERE project_id = ? AND name = 'Done' ORDER BY position DESC LIMIT 1",
+            (task_project_id,)
+        )
+        row = cursor.fetchone()
+        if row:
+            return row["id"]
+
+        cursor.execute(
+            "SELECT id FROM columns WHERE project_id = ? ORDER BY position DESC LIMIT 1",
+            (task_project_id,)
+        )
+        row = cursor.fetchone()
+        return row["id"] if row else None
+
     async def sync_task_to_calendar(
         self,
         task_id: int,
         calendar_id: str = "primary",
         force_update: bool = False,
     ) -> Optional[dict]:
-        """Sync a task's due date to Google Calendar. Updates existing event or creates new."""
-        print(f"[CalendarService] sync_task_to_calendar: task_id={task_id}, force_update={force_update}")
-
+        """Sync a task's due date to Google Calendar."""
         with get_db() as conn:
             cursor = conn.cursor()
             cursor.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
             task = cursor.fetchone()
 
             if not task:
-                print(f"[CalendarService] Task {task_id} not found")
                 return None
 
             task_dict = dict(task)
@@ -227,11 +237,7 @@ class CalendarService:
             is_completed = task_dict.get("completed", 0) == 1
             existing_event_id = task_dict.get("google_event_id")
 
-            print(f"[CalendarService] Task: {title}, due_date={due_date}, completed={is_completed}")
-
-            # If task is completed and has event, delete the event
             if is_completed and existing_event_id:
-                print(f"[CalendarService] Task completed - deleting event {existing_event_id}")
                 await self.delete_event(existing_event_id, calendar_id)
                 cursor.execute(
                     "UPDATE tasks SET google_event_id = NULL WHERE id = ?",
@@ -241,10 +247,7 @@ class CalendarService:
                 return {"id": existing_event_id, "status": "deleted"}
 
             if not due_date:
-                print(f"[CalendarService] Task {task_id} has no due_date")
-                # If had event but no due_date now, delete the event
                 if existing_event_id:
-                    print(f"[CalendarService] Deleting event {existing_event_id} (no due_date)")
                     await self.delete_event(existing_event_id, calendar_id)
                     cursor.execute(
                         "UPDATE tasks SET google_event_id = NULL WHERE id = ?",
@@ -253,7 +256,6 @@ class CalendarService:
                     conn.commit()
                 return None
 
-            # Parse due date - treat as local time (Europe/Prague)
             if isinstance(due_date, str):
                 due_datetime = datetime.fromisoformat(due_date.replace("Z", ""))
             else:
@@ -261,9 +263,7 @@ class CalendarService:
 
             end_datetime = due_datetime + timedelta(hours=1)
 
-            # Check if task already has an event - UPDATE it
             if existing_event_id:
-                print(f"[CalendarService] Updating existing event {existing_event_id}")
                 updates = {
                     "summary": f"[Task] {title}",
                     "description": description,
@@ -278,31 +278,22 @@ class CalendarService:
                 }
                 result = await self.update_event(existing_event_id, updates, calendar_id)
                 if result:
-                    print(f"[CalendarService] Event {existing_event_id} updated")
                     return {"id": existing_event_id, "status": "updated"}
-                else:
-                    print(f"[CalendarService] Failed to update event, creating new")
-                    # Event might have been deleted, create new one
-                    existing_event_id = None
+                existing_event_id = None
 
-            # Create new calendar event
-            print(f"[CalendarService] Creating event for: {title} at {due_datetime}")
             result = await self.create_event(
                 summary=f"[Task] {title}",
                 start=due_datetime,
                 description=description,
                 calendar_id=calendar_id,
             )
-            print(f"[CalendarService] Create event result: {result}")
 
-            # Save event_id to task
             if result and "id" in result:
                 cursor.execute(
                     "UPDATE tasks SET google_event_id = ? WHERE id = ?",
                     (result["id"], task_id)
                 )
                 conn.commit()
-                print(f"[CalendarService] Saved event_id {result['id']} to task {task_id}")
 
             return result
 
@@ -311,13 +302,10 @@ class CalendarService:
         project_id: Optional[int] = None,
         calendar_id: str = "primary",
     ) -> dict:
-        """Sync all tasks with due dates to calendar (create new or update existing)."""
-        print(f"[CalendarService] sync_all_tasks: project_id={project_id}")
-
+        """Sync all tasks with due dates to calendar."""
         with get_db() as conn:
             cursor = conn.cursor()
 
-            # Get all tasks (not just with due_date) to handle deletions too
             if project_id:
                 cursor.execute(
                     "SELECT * FROM tasks WHERE project_id = ?",
@@ -327,7 +315,6 @@ class CalendarService:
                 cursor.execute("SELECT * FROM tasks")
 
             tasks = cursor.fetchall()
-            print(f"[CalendarService] Found {len(tasks)} tasks")
 
             created = 0
             updated = 0
@@ -335,7 +322,6 @@ class CalendarService:
             failed = 0
 
             for task in tasks:
-                print(f"[CalendarService] Processing task {task['id']}: {task['title']}")
                 result = await self.sync_task_to_calendar(task["id"], calendar_id)
                 if result:
                     status = result.get("status", "created")
@@ -346,11 +332,8 @@ class CalendarService:
                     else:
                         created += 1
                 else:
-                    # No due_date or other issue - not a failure for tasks without due_date
                     if task["due_date"]:
                         failed += 1
-
-            print(f"[CalendarService] Sync complete: {created} created, {updated} updated, {deleted} deleted, {failed} failed")
 
             return {
                 "synced": created,
@@ -360,49 +343,15 @@ class CalendarService:
                 "total": len(tasks),
             }
 
-    async def get_event(
-        self,
-        event_id: str,
-        calendar_id: str = "primary",
-    ) -> Optional[dict]:
-        """Get a single calendar event by ID."""
-        return await self._make_request("GET", f"/calendars/{calendar_id}/events/{event_id}")
-
-    def _get_done_column_id(self, cursor, task_project_id: int) -> Optional[int]:
-        """Get the 'Done' column ID for a project."""
-        # Try to find column named 'Done' for this project
-        cursor.execute(
-            "SELECT id FROM columns WHERE project_id = ? AND name = 'Done' ORDER BY position DESC LIMIT 1",
-            (task_project_id,)
-        )
-        row = cursor.fetchone()
-        if row:
-            return row["id"]
-
-        # Fallback: get the last column (highest position) for this project
-        cursor.execute(
-            "SELECT id FROM columns WHERE project_id = ? ORDER BY position DESC LIMIT 1",
-            (task_project_id,)
-        )
-        row = cursor.fetchone()
-        return row["id"] if row else None
-
     async def sync_from_calendar(
         self,
         project_id: Optional[int] = None,
         calendar_id: str = "primary",
     ) -> dict:
-        """
-        Sync from Google Calendar back to tasks.
-        - If event deleted/cancelled: mark task as completed and move to Done column
-        - If event exists: sync description changes back to task
-        """
-        print(f"[CalendarService] sync_from_calendar: project_id={project_id}")
-
+        """Sync from Google Calendar back to tasks."""
         with get_db() as conn:
             cursor = conn.cursor()
 
-            # Get tasks that have google_event_id
             if project_id:
                 cursor.execute(
                     "SELECT * FROM tasks WHERE google_event_id IS NOT NULL AND project_id = ?",
@@ -414,7 +363,6 @@ class CalendarService:
                 )
 
             tasks = cursor.fetchall()
-            print(f"[CalendarService] Found {len(tasks)} tasks with google_event_id")
 
             completed_count = 0
             updated_count = 0
@@ -426,26 +374,20 @@ class CalendarService:
                 task_project_id = task_dict.get("project_id", 1)
                 task_id = task_dict["id"]
                 is_already_completed = task_dict.get("completed", 0) == 1
-                print(f"[CalendarService] Checking event {event_id} for task {task_id}")
 
-                # Try to get the event from Google Calendar
                 event = await self.get_event(event_id, calendar_id)
 
                 should_complete = False
                 if event is None:
                     if not is_already_completed:
-                        print(f"[CalendarService] Event {event_id} not found - marking task {task_id} as completed")
                         should_complete = True
                 elif event.get("status") == "cancelled":
                     if not is_already_completed:
-                        print(f"[CalendarService] Event {event_id} cancelled - marking task {task_id} as completed")
                         should_complete = True
                 else:
-                    # Event exists - sync changes (description, title) back to task
                     event_description = event.get("description", "")
                     event_summary = event.get("summary", "")
 
-                    # Remove [Task] prefix from summary if present
                     if event_summary.startswith("[Task] "):
                         event_summary = event_summary[7:]
 
@@ -455,17 +397,13 @@ class CalendarService:
                     updates = []
                     params = []
 
-                    # Check if description changed
                     if event_description != current_description:
                         updates.append("description = ?")
                         params.append(event_description)
-                        print(f"[CalendarService] Updating description for task {task_id}")
 
-                    # Check if title changed (only if not prefixed)
                     if event_summary and event_summary != current_title:
                         updates.append("title = ?")
                         params.append(event_summary)
-                        print(f"[CalendarService] Updating title for task {task_id}: {event_summary}")
 
                     if updates:
                         params.append(task_id)
@@ -477,18 +415,14 @@ class CalendarService:
                         updated_count += 1
 
                 if should_complete:
-                    # Get Done column for this task's project
                     done_column_id = self._get_done_column_id(cursor, task_project_id)
-                    print(f"[CalendarService] Moving task {task_id} to Done column {done_column_id}")
 
-                    # Shift existing tasks in Done column down (increment position)
                     if done_column_id:
                         cursor.execute(
                             "UPDATE tasks SET position = position + 1 WHERE column_id = ?",
                             (done_column_id,)
                         )
 
-                    # Mark as completed, move to Done column, position 0 (top)
                     if done_column_id:
                         cursor.execute(
                             "UPDATE tasks SET completed = 1, column_id = ?, position = 0 WHERE id = ?",
@@ -503,8 +437,6 @@ class CalendarService:
                     completed_count += 1
 
                 checked_count += 1
-
-            print(f"[CalendarService] Sync from calendar complete: {completed_count} completed, {updated_count} updated, {checked_count} checked")
 
             return {
                 "completed": completed_count,

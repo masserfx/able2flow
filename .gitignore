@@ -80,9 +80,8 @@ htmlcov/
 *.tmp
 *.temp
 
-# AI docs (ignore generated results, keep README)
-ai_docs/*.md
-!ai_docs/README.md
+# AI docs (generated)
+ai_docs/
 
 app_docs/install*
 app_docs/maintenance*
@@ -97,3 +96,9 @@ backups/
 
 # Uploads (user files)
 apps/backend/uploads/
+
+# Local development
+.claude/
+screenshots/
+images/
+install-and-maintain/

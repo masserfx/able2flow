@@ -117,9 +117,7 @@ export function useAuth() {
       )
 
       if (googleAccount) {
-        // Token needs to be fetched via backend using Clerk Backend API
-        // For now, return null - we'll implement backend token fetch
-        console.log('Google account found:', googleAccount)
+        // Token is fetched via backend using Clerk Backend API
         return null
       }
       return null

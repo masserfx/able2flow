@@ -7,6 +7,8 @@ import httpx
 from database import get_db
 from auth.token_service import TokenService
 
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+
 
 class SlackService:
     """Service for Slack operations."""
@@ -155,7 +157,7 @@ class SlackService:
                             "text": "View in Able2Flow",
                             "emoji": True,
                         },
-                        "url": f"http://localhost:5173/incidents",
+                        "url": f"{FRONTEND_URL}/incidents",
                         "action_id": "view_incident",
                     },
                 ]

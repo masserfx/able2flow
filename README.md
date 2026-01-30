@@ -60,6 +60,20 @@ Kombinace Trello-style kanban boardu s Betterstack-style monitoringem a incident
 
 ## Quick Start
 
+### 1. Environment Setup
+
+```bash
+# Backend
+cp .env.sample .env
+# Edit .env with your API keys
+
+# Frontend
+cp apps/frontend/.env.sample apps/frontend/.env
+# Edit with your Clerk publishable key
+```
+
+### 2. Run the App
+
 ```bash
 # Backend (terminal 1)
 just be
@@ -68,7 +82,39 @@ just be
 just fe
 ```
 
-Otevři http://localhost:5173
+Open http://localhost:5173
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `CLERK_SECRET_KEY` | Yes | Clerk authentication |
+| `GOOGLE_CLIENT_ID` | For integrations | Google OAuth |
+| `GOOGLE_CLIENT_SECRET` | For integrations | Google OAuth |
+| `ANTHROPIC_API_KEY` | For AI | AI triage feature |
+| `SLACK_BOT_TOKEN` | For Slack | Slack notifications |
+| `CORS_ORIGINS` | Production | Comma-separated origins |
+| `SEED_DATA` | Optional | Set to "false" in production |
+
+## Integrations
+
+### Google Calendar
+- Two-way sync between tasks and calendar
+- Task due dates create calendar events
+- Deleted/cancelled events mark tasks as completed
+
+### Google Docs
+- Link documents to tasks
+- Create docs from task descriptions
+
+### Slack
+- Incident notifications to channels
+- Slash commands: `/able2flow create [task]`
+
+### File Attachments
+- Upload files to tasks (max 10MB)
+- Supported: images, documents, archives
+- Preview in kanban cards
 
 ## API Endpoints
 
@@ -148,28 +194,36 @@ able2flow/
 │   ├── backend/
 │   │   ├── main.py              # FastAPI app
 │   │   ├── database.py          # DB connection
-│   │   ├── init_db.py           # Schema + seed data
+│   │   ├── init_db.py           # Schema + migrations
+│   │   ├── auth/                # Clerk authentication
 │   │   ├── routers/
 │   │   │   ├── tasks.py
 │   │   │   ├── columns.py
 │   │   │   ├── monitors.py
 │   │   │   ├── incidents.py
-│   │   │   ├── audit.py
-│   │   │   └── dashboard.py
+│   │   │   ├── attachments.py
+│   │   │   └── integrations/    # Google, Slack APIs
 │   │   └── services/
 │   │       ├── audit_service.py
-│   │       └── monitor_service.py
+│   │       ├── monitor_service.py
+│   │       └── integrations/    # Calendar, Docs, Gmail
 │   └── frontend/
 │       └── src/
 │           ├── App.vue
-│           ├── router/index.ts
-│           ├── composables/useApi.ts
+│           ├── plugins/clerk.ts
+│           ├── composables/
+│           │   ├── useApi.ts
+│           │   ├── useAuth.ts
+│           │   └── useIntegrations.ts
+│           ├── components/
+│           │   ├── TaskModal.vue
+│           │   └── IntegrationCard.vue
 │           └── views/
 │               ├── DashboardView.vue
 │               ├── BoardView.vue
-│               ├── MonitorsView.vue
-│               ├── IncidentsView.vue
-│               └── AuditView.vue
+│               ├── IntegrationsView.vue
+│               └── ...
+├── .env.sample          # Environment template
 ├── justfile
 └── README.md
 ```

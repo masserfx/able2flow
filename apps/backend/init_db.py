@@ -1,17 +1,22 @@
-"""Initialize the SQLite database with tables for Able2Flow MVP."""
+"""Initialize the SQLite database with tables for Able2Flow."""
 
+import logging
+import os
 import sqlite3
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 DB_PATH = Path(__file__).parent / "starter.db"
+SEED_DATA = os.getenv("SEED_DATA", "true").lower() == "true"
 
 
 def init_database() -> None:
-    """Create tables and insert mock data."""
+    """Create database tables. Optionally insert seed data if SEED_DATA=true."""
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
-    # Create users table (for Clerk integration)
+    # Users table (Clerk integration)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id TEXT PRIMARY KEY,
@@ -22,7 +27,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create OAuth tokens table (encrypted)
+    # OAuth tokens table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_oauth_tokens (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -38,7 +43,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create integration settings table
+    # Integration settings table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS integration_settings (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -53,7 +58,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create linked documents table
+    # Linked documents table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS linked_documents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -67,7 +72,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create projects table
+    # Projects table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS projects (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -78,7 +83,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create columns table (Kanban boards)
+    # Columns table (Kanban boards)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS columns (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -92,7 +97,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create tasks table with Kanban support
+    # Tasks table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -111,7 +116,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create audit_log table for disaster recovery
+    # Audit log table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS audit_log (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -124,7 +129,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create monitors table for health checks
+    # Monitors table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS monitors (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,7 +144,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create incidents table
+    # Incidents table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS incidents (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -156,7 +161,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create metrics table for response times
+    # Metrics table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS metrics (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -169,7 +174,7 @@ def init_database() -> None:
         )
     """)
 
-    # Create attachments table for task files
+    # Attachments table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS attachments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -183,100 +188,55 @@ def init_database() -> None:
         )
     """)
 
-    # Initialize default projects if not exist
+    # Seed data (only if SEED_DATA=true and tables are empty)
+    if SEED_DATA:
+        _seed_data(cursor)
+
+    # Migrations
+    _run_migrations(cursor)
+
+    conn.commit()
+    conn.close()
+    logger.info("Database initialized at %s", DB_PATH)
+
+
+def _seed_data(cursor) -> None:
+    """Insert seed data for development/demo."""
+    # Default project
     cursor.execute("SELECT COUNT(*) FROM projects")
     if cursor.fetchone()[0] == 0:
-        demo_projects = [
-            ("Able2Flow", "Default project with existing data", "#7aa2f7"),
-            ("Marketing Web", "Marketing website project", "#bb9af7"),
-        ]
-        cursor.executemany(
+        cursor.execute(
             "INSERT INTO projects (name, description, color) VALUES (?, ?, ?)",
-            demo_projects,
+            ("My Project", "Default project", "#7aa2f7"),
         )
-        print(f"Inserted {len(demo_projects)} demo projects")
+        logger.info("Created default project")
 
-    # Initialize default Kanban columns if not exist
+    # Default columns
     cursor.execute("SELECT COUNT(*) FROM columns")
     if cursor.fetchone()[0] == 0:
-        # Columns for project 1 (Able2Flow)
         default_columns = [
             (1, 1, "Backlog", 0, "#6b7280"),
             (1, 1, "To Do", 1, "#3b82f6"),
             (1, 1, "In Progress", 2, "#f59e0b"),
             (1, 1, "Done", 3, "#10b981"),
         ]
-        # Columns for project 2 (Marketing Web)
-        project2_columns = [
-            (1, 2, "Backlog", 0, "#6b7280"),
-            (1, 2, "To Do", 1, "#3b82f6"),
-            (1, 2, "In Progress", 2, "#f59e0b"),
-            (1, 2, "Done", 3, "#10b981"),
-        ]
-        all_columns = default_columns + project2_columns
         cursor.executemany(
             "INSERT INTO columns (board_id, project_id, name, position, color) VALUES (?, ?, ?, ?, ?)",
-            all_columns,
+            default_columns,
         )
-        print(f"Inserted {len(all_columns)} default columns for both projects")
+        logger.info("Created default columns")
 
-    # Check if we already have tasks
-    cursor.execute("SELECT COUNT(*) FROM tasks")
-    count = cursor.fetchone()[0]
 
-    if count == 0:
-        # Get column IDs for project 1 (Able2Flow)
-        cursor.execute("SELECT id FROM columns WHERE name = 'To Do' AND project_id = 1")
-        todo_col = cursor.fetchone()
-        cursor.execute("SELECT id FROM columns WHERE name = 'In Progress' AND project_id = 1")
-        progress_col = cursor.fetchone()
-        cursor.execute("SELECT id FROM columns WHERE name = 'Done' AND project_id = 1")
-        done_col = cursor.fetchone()
-
-        todo_id = todo_col[0] if todo_col else None
-        progress_id = progress_col[0] if progress_col else None
-        done_id = done_col[0] if done_col else None
-
-        # Insert mock data with column assignments (all for project 1)
-        mock_tasks = [
-            ("Setup Python backend", "Configure FastAPI with SQLite", 1, done_id, 0, "high", 1),
-            ("Create Vue frontend", "Scaffold Vite Vue-TS project", 1, done_id, 1, "high", 1),
-            ("Implement CRUD API", "Add endpoints for tasks", 0, progress_id, 0, "medium", 1),
-            ("Connect frontend to backend", "Use fetch to call API", 0, todo_id, 0, "medium", 1),
-            ("Add monitoring dashboard", "Track uptime and incidents", 0, todo_id, 1, "low", 1),
-        ]
-        cursor.executemany(
-            "INSERT INTO tasks (title, description, completed, column_id, position, priority, project_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
-            mock_tasks,
-        )
-        print(f"Inserted {len(mock_tasks)} mock tasks")
-
-    # Check if we have monitors
-    cursor.execute("SELECT COUNT(*) FROM monitors")
-    if cursor.fetchone()[0] == 0:
-        # Insert demo monitors (all for project 1)
-        demo_monitors = [
-            ("Able2Flow API", "http://localhost:8000/", 30, 1),
-            ("Google", "https://www.google.com", 60, 1),
-            ("GitHub", "https://github.com", 60, 1),
-        ]
-        cursor.executemany(
-            "INSERT INTO monitors (name, url, check_interval, project_id) VALUES (?, ?, ?, ?)",
-            demo_monitors,
-        )
-        print(f"Inserted {len(demo_monitors)} demo monitors")
-
-    # Migration: Add google_event_id column if it doesn't exist
+def _run_migrations(cursor) -> None:
+    """Run database migrations."""
+    # Add google_event_id column if missing
     try:
         cursor.execute("ALTER TABLE tasks ADD COLUMN google_event_id TEXT")
-        print("Added google_event_id column to tasks table")
+        logger.info("Migration: Added google_event_id column")
     except sqlite3.OperationalError:
-        pass  # Column already exists
-
-    conn.commit()
-    conn.close()
-    print(f"Database initialized at {DB_PATH}")
+        pass
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     init_database()

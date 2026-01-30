@@ -1,13 +1,21 @@
 """Able2Flow MVP - Task management + Monitoring/Incident response API."""
 
 import asyncio
+import logging
+import os
 from contextlib import asynccontextmanager
 
 from dotenv import load_dotenv
-load_dotenv()  # Load .env file
+load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 from routers import tasks, columns, monitors, incidents, audit, dashboard, ai, sla, events, projects, attachments
 from routers.integrations import calendar_router, docs_router, gmail_router, slack_router, oauth_router
@@ -40,9 +48,14 @@ app = FastAPI(
 )
 
 # CORS for frontend
+CORS_ORIGINS = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:5173,http://127.0.0.1:5173"
+).split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://127.0.0.1:5173"],
+    allow_origins=CORS_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
