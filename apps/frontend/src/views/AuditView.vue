@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useApi, type AuditLog } from '../composables/useApi'
 
+const { t } = useI18n()
 const api = useApi()
 const logs = ref<AuditLog[]>([])
 const loading = ref(true)
@@ -34,6 +36,28 @@ function getActionColor(action: string) {
   }
 }
 
+function getActionText(action: string) {
+  switch (action) {
+    case 'create': return t('audit.actions.create')
+    case 'update': return t('audit.actions.update')
+    case 'delete': return t('audit.actions.delete')
+    case 'move': return t('audit.actions.move')
+    case 'acknowledge': return t('audit.actions.acknowledge')
+    case 'resolve': return t('audit.actions.resolve')
+    default: return action
+  }
+}
+
+function getEntityText(entityType: string) {
+  switch (entityType) {
+    case 'task': return t('audit.entities.task')
+    case 'column': return t('audit.entities.column')
+    case 'monitor': return t('audit.entities.monitor')
+    case 'incident': return t('audit.entities.incident')
+    default: return entityType
+  }
+}
+
 function getEntityIcon(entityType: string) {
   switch (entityType) {
     case 'task':
@@ -58,10 +82,10 @@ function formatTimestamp(timestamp: string) {
   const hours = Math.floor(minutes / 60)
   const days = Math.floor(hours / 24)
 
-  if (minutes < 1) return 'Just now'
-  if (minutes < 60) return `${minutes}m ago`
-  if (hours < 24) return `${hours}h ago`
-  if (days < 7) return `${days}d ago`
+  if (minutes < 1) return t('common.justNow')
+  if (minutes < 60) return t('common.minutesAgo', { count: minutes })
+  if (hours < 24) return t('common.hoursAgo', { count: hours })
+  if (days < 7) return t('common.daysAgo', { count: days })
 
   return date.toLocaleDateString()
 }
@@ -71,26 +95,26 @@ function formatChange(log: AuditLog) {
     const name = (log.new_value as Record<string, unknown>).title ||
                  (log.new_value as Record<string, unknown>).name ||
                  `#${log.entity_id}`
-    return `Created "${name}"`
+    return t('audit.created', { name })
   }
 
   if (log.action === 'delete' && log.old_value) {
     const name = (log.old_value as Record<string, unknown>).title ||
                  (log.old_value as Record<string, unknown>).name ||
                  `#${log.entity_id}`
-    return `Deleted "${name}"`
+    return t('audit.deleted', { name })
   }
 
   if (log.action === 'move' && log.old_value && log.new_value) {
-    return `Moved task #${log.entity_id}`
+    return t('audit.movedTask', { id: log.entity_id })
   }
 
   if (log.action === 'acknowledge') {
-    return `Acknowledged incident #${log.entity_id}`
+    return t('audit.acknowledgedIncident', { id: log.entity_id })
   }
 
   if (log.action === 'resolve') {
-    return `Resolved incident #${log.entity_id}`
+    return t('audit.resolvedIncident', { id: log.entity_id })
   }
 
   if (log.action === 'update' && log.old_value && log.new_value) {
@@ -105,11 +129,11 @@ function formatChange(log: AuditLog) {
     }
 
     if (changes.length > 0) {
-      return `Updated ${changes.join(', ')} on #${log.entity_id}`
+      return t('audit.updated', { changes: changes.join(', '), id: log.entity_id })
     }
   }
 
-  return `${log.action} ${log.entity_type} #${log.entity_id}`
+  return `${getActionText(log.action)} ${getEntityText(log.entity_type)} #${log.entity_id}`
 }
 
 onMounted(loadLogs)
@@ -118,20 +142,20 @@ onMounted(loadLogs)
 <template>
   <div class="audit-view">
     <header class="page-header">
-      <h1>Audit Log</h1>
+      <h1>{{ $t('audit.title') }}</h1>
       <button @click="loadLogs" :disabled="loading">
-        {{ loading ? 'Loading...' : '↻ Refresh' }}
+        {{ loading ? $t('common.loading') : '↻ ' + $t('audit.refresh') }}
       </button>
     </header>
 
     <div v-if="loading && logs.length === 0" class="loading">
-      Loading audit logs...
+      {{ $t('audit.loading') }}
     </div>
 
     <div v-else-if="logs.length === 0" class="empty-state card">
       <div class="empty-icon">☰</div>
-      <div class="empty-text">No activity yet</div>
-      <div class="empty-hint">Actions will appear here as you use the app</div>
+      <div class="empty-text">{{ $t('audit.noActivity') }}</div>
+      <div class="empty-hint">{{ $t('audit.actionsWillAppear') }}</div>
     </div>
 
     <div v-else class="audit-timeline">
@@ -149,9 +173,9 @@ onMounted(loadLogs)
               class="entry-action"
               :style="{ color: getActionColor(log.action) }"
             >
-              {{ log.action }}
+              {{ getActionText(log.action) }}
             </span>
-            <span class="entry-entity">{{ log.entity_type }}</span>
+            <span class="entry-entity">{{ getEntityText(log.entity_type) }}</span>
           </div>
           <div class="entry-description">{{ formatChange(log) }}</div>
           <div class="entry-time">{{ formatTimestamp(log.timestamp) }}</div>

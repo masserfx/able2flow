@@ -189,54 +189,97 @@ class MonitorService:
 monitor_service = MonitorService()
 
 
-def get_monitor_stats() -> dict[str, Any]:
-    """Get monitoring statistics."""
+def get_monitor_stats(project_id: int | None = None) -> dict[str, Any]:
+    """Get monitoring statistics, optionally filtered by project."""
     with get_db() as conn:
+        # Build project filter
+        project_filter = ""
+        project_params: tuple = ()
+        if project_id is not None:
+            project_filter = " WHERE project_id = ?"
+            project_params = (project_id,)
+
         # Total monitors
-        cursor = conn.execute("SELECT COUNT(*) as total FROM monitors")
+        cursor = conn.execute(f"SELECT COUNT(*) as total FROM monitors{project_filter}", project_params)
         total_monitors = cursor.fetchone()["total"]
 
         # Monitors by status
         cursor = conn.execute(
-            """
+            f"""
             SELECT last_status, COUNT(*) as count
             FROM monitors
+            {project_filter}
             GROUP BY last_status
-            """
+            """,
+            project_params,
         )
         by_status = {row["last_status"]: row["count"] for row in cursor.fetchall()}
 
         # Open incidents
-        cursor = conn.execute(
-            """
-            SELECT COUNT(*) as count
-            FROM incidents
-            WHERE status != 'resolved'
-            """
-        )
+        if project_id is not None:
+            cursor = conn.execute(
+                """
+                SELECT COUNT(*) as count
+                FROM incidents
+                WHERE status != 'resolved' AND project_id = ?
+                """,
+                (project_id,),
+            )
+        else:
+            cursor = conn.execute(
+                """
+                SELECT COUNT(*) as count
+                FROM incidents
+                WHERE status != 'resolved'
+                """
+            )
         open_incidents = cursor.fetchone()["count"]
 
-        # Average response time (last hour)
-        cursor = conn.execute(
-            """
-            SELECT AVG(response_time_ms) as avg_time
-            FROM metrics
-            WHERE timestamp > datetime('now', '-1 hour') AND is_up = 1
-            """
-        )
+        # Average response time (last hour) - filter by monitors in project
+        if project_id is not None:
+            cursor = conn.execute(
+                """
+                SELECT AVG(m.response_time_ms) as avg_time
+                FROM metrics m
+                JOIN monitors mon ON m.monitor_id = mon.id
+                WHERE m.timestamp > datetime('now', '-1 hour') AND m.is_up = 1 AND mon.project_id = ?
+                """,
+                (project_id,),
+            )
+        else:
+            cursor = conn.execute(
+                """
+                SELECT AVG(response_time_ms) as avg_time
+                FROM metrics
+                WHERE timestamp > datetime('now', '-1 hour') AND is_up = 1
+                """
+            )
         row = cursor.fetchone()
         avg_response_time = round(row["avg_time"]) if row["avg_time"] else 0
 
         # Uptime percentage (last 24h)
-        cursor = conn.execute(
-            """
-            SELECT
-                SUM(CASE WHEN is_up = 1 THEN 1 ELSE 0 END) as up_count,
-                COUNT(*) as total
-            FROM metrics
-            WHERE timestamp > datetime('now', '-24 hours')
-            """
-        )
+        if project_id is not None:
+            cursor = conn.execute(
+                """
+                SELECT
+                    SUM(CASE WHEN m.is_up = 1 THEN 1 ELSE 0 END) as up_count,
+                    COUNT(*) as total
+                FROM metrics m
+                JOIN monitors mon ON m.monitor_id = mon.id
+                WHERE m.timestamp > datetime('now', '-24 hours') AND mon.project_id = ?
+                """,
+                (project_id,),
+            )
+        else:
+            cursor = conn.execute(
+                """
+                SELECT
+                    SUM(CASE WHEN is_up = 1 THEN 1 ELSE 0 END) as up_count,
+                    COUNT(*) as total
+                FROM metrics
+                WHERE timestamp > datetime('now', '-24 hours')
+                """
+            )
         row = cursor.fetchone()
         uptime = round((row["up_count"] / row["total"]) * 100, 2) if row["total"] > 0 else 100
 

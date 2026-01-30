@@ -15,6 +15,7 @@ class IncidentCreate(BaseModel):
     monitor_id: int | None = None
     title: str
     severity: str = "warning"
+    project_id: int | None = None
 
 
 class IncidentUpdate(BaseModel):
@@ -49,13 +50,25 @@ def row_to_incident(row) -> dict:
 
 
 @router.get("", response_model=list[Incident])
-def list_incidents(status: str | None = None) -> list[dict]:
-    """Get all incidents, optionally filtered by status."""
+def list_incidents(status: str | None = None, project_id: int | None = None) -> list[dict]:
+    """Get all incidents, optionally filtered by status and/or project."""
     with get_db() as conn:
+        conditions = []
+        params = []
+
         if status:
+            conditions.append("status = ?")
+            params.append(status)
+
+        if project_id is not None:
+            conditions.append("project_id = ?")
+            params.append(project_id)
+
+        if conditions:
+            where_clause = " AND ".join(conditions)
             cursor = conn.execute(
-                "SELECT * FROM incidents WHERE status = ? ORDER BY started_at DESC",
-                (status,),
+                f"SELECT * FROM incidents WHERE {where_clause} ORDER BY started_at DESC",
+                params,
             )
         else:
             cursor = conn.execute("SELECT * FROM incidents ORDER BY started_at DESC")
@@ -63,12 +76,18 @@ def list_incidents(status: str | None = None) -> list[dict]:
 
 
 @router.get("/open", response_model=list[Incident])
-def list_open_incidents() -> list[dict]:
-    """Get all open (non-resolved) incidents."""
+def list_open_incidents(project_id: int | None = None) -> list[dict]:
+    """Get all open (non-resolved) incidents, optionally filtered by project."""
     with get_db() as conn:
-        cursor = conn.execute(
-            "SELECT * FROM incidents WHERE status != 'resolved' ORDER BY started_at DESC"
-        )
+        if project_id is not None:
+            cursor = conn.execute(
+                "SELECT * FROM incidents WHERE status != 'resolved' AND project_id = ? ORDER BY started_at DESC",
+                (project_id,),
+            )
+        else:
+            cursor = conn.execute(
+                "SELECT * FROM incidents WHERE status != 'resolved' ORDER BY started_at DESC"
+            )
         return [row_to_incident(row) for row in cursor.fetchall()]
 
 

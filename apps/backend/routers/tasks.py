@@ -16,6 +16,7 @@ class TaskCreate(BaseModel):
     position: int | None = None
     priority: str = "medium"
     due_date: str | None = None
+    project_id: int | None = None
 
 
 class TaskUpdate(BaseModel):
@@ -61,13 +62,26 @@ def row_to_task(row) -> dict:
 
 
 @router.get("", response_model=list[Task])
-def list_tasks(column_id: int | None = None) -> list[dict]:
-    """Get all tasks, optionally filtered by column."""
+def list_tasks(column_id: int | None = None, project_id: int | None = None) -> list[dict]:
+    """Get all tasks, optionally filtered by column and/or project."""
     with get_db() as conn:
+        conditions = []
+        params = []
+
         if column_id is not None:
+            conditions.append("column_id = ?")
+            params.append(column_id)
+
+        if project_id is not None:
+            conditions.append("project_id = ?")
+            params.append(project_id)
+
+        if conditions:
+            where_clause = " AND ".join(conditions)
+            order = "ORDER BY position" if column_id is not None else "ORDER BY created_at DESC"
             cursor = conn.execute(
-                "SELECT * FROM tasks WHERE column_id = ? ORDER BY position",
-                (column_id,),
+                f"SELECT * FROM tasks WHERE {where_clause} {order}",
+                params,
             )
         else:
             cursor = conn.execute("SELECT * FROM tasks ORDER BY created_at DESC")

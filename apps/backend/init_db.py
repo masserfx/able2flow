@@ -11,15 +11,28 @@ def init_database() -> None:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
+    # Create projects table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT,
+            color TEXT DEFAULT '#7aa2f7',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
     # Create columns table (Kanban boards)
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS columns (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             board_id INTEGER DEFAULT 1,
+            project_id INTEGER DEFAULT 1,
             name TEXT NOT NULL,
             position INTEGER NOT NULL,
             color TEXT DEFAULT '#3b82f6',
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(id)
         )
     """)
 
@@ -34,8 +47,10 @@ def init_database() -> None:
             position INTEGER DEFAULT 0,
             priority TEXT DEFAULT 'medium',
             due_date TEXT,
+            project_id INTEGER DEFAULT 1,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (column_id) REFERENCES columns(id)
+            FOREIGN KEY (column_id) REFERENCES columns(id),
+            FOREIGN KEY (project_id) REFERENCES projects(id)
         )
     """)
 
@@ -61,7 +76,9 @@ def init_database() -> None:
             check_interval INTEGER DEFAULT 60,
             last_status TEXT DEFAULT 'unknown',
             last_check TEXT,
-            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+            project_id INTEGER DEFAULT 1,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (project_id) REFERENCES projects(id)
         )
     """)
 
@@ -76,7 +93,9 @@ def init_database() -> None:
             started_at TEXT DEFAULT CURRENT_TIMESTAMP,
             acknowledged_at TEXT,
             resolved_at TEXT,
-            FOREIGN KEY (monitor_id) REFERENCES monitors(id)
+            project_id INTEGER DEFAULT 1,
+            FOREIGN KEY (monitor_id) REFERENCES monitors(id),
+            FOREIGN KEY (project_id) REFERENCES projects(id)
         )
     """)
 
@@ -93,48 +112,70 @@ def init_database() -> None:
         )
     """)
 
+    # Initialize default projects if not exist
+    cursor.execute("SELECT COUNT(*) FROM projects")
+    if cursor.fetchone()[0] == 0:
+        demo_projects = [
+            ("Able2Flow", "Default project with existing data", "#7aa2f7"),
+            ("Marketing Web", "Marketing website project", "#bb9af7"),
+        ]
+        cursor.executemany(
+            "INSERT INTO projects (name, description, color) VALUES (?, ?, ?)",
+            demo_projects,
+        )
+        print(f"Inserted {len(demo_projects)} demo projects")
+
     # Initialize default Kanban columns if not exist
     cursor.execute("SELECT COUNT(*) FROM columns")
     if cursor.fetchone()[0] == 0:
+        # Columns for project 1 (Able2Flow)
         default_columns = [
-            (1, "Backlog", 0, "#6b7280"),
-            (1, "To Do", 1, "#3b82f6"),
-            (1, "In Progress", 2, "#f59e0b"),
-            (1, "Done", 3, "#10b981"),
+            (1, 1, "Backlog", 0, "#6b7280"),
+            (1, 1, "To Do", 1, "#3b82f6"),
+            (1, 1, "In Progress", 2, "#f59e0b"),
+            (1, 1, "Done", 3, "#10b981"),
         ]
+        # Columns for project 2 (Marketing Web)
+        project2_columns = [
+            (1, 2, "Backlog", 0, "#6b7280"),
+            (1, 2, "To Do", 1, "#3b82f6"),
+            (1, 2, "In Progress", 2, "#f59e0b"),
+            (1, 2, "Done", 3, "#10b981"),
+        ]
+        all_columns = default_columns + project2_columns
         cursor.executemany(
-            "INSERT INTO columns (board_id, name, position, color) VALUES (?, ?, ?, ?)",
-            default_columns,
+            "INSERT INTO columns (board_id, project_id, name, position, color) VALUES (?, ?, ?, ?, ?)",
+            all_columns,
         )
-        print(f"Inserted {len(default_columns)} default columns")
+        print(f"Inserted {len(all_columns)} default columns for both projects")
 
     # Check if we already have tasks
     cursor.execute("SELECT COUNT(*) FROM tasks")
     count = cursor.fetchone()[0]
 
     if count == 0:
-        # Get column IDs
-        cursor.execute("SELECT id FROM columns WHERE name = 'To Do'")
+        # Get column IDs for project 1 (Able2Flow)
+        cursor.execute("SELECT id FROM columns WHERE name = 'To Do' AND project_id = 1")
         todo_col = cursor.fetchone()
-        cursor.execute("SELECT id FROM columns WHERE name = 'In Progress'")
+        cursor.execute("SELECT id FROM columns WHERE name = 'In Progress' AND project_id = 1")
         progress_col = cursor.fetchone()
-        cursor.execute("SELECT id FROM columns WHERE name = 'Done'")
+        cursor.execute("SELECT id FROM columns WHERE name = 'Done' AND project_id = 1")
         done_col = cursor.fetchone()
 
         todo_id = todo_col[0] if todo_col else None
         progress_id = progress_col[0] if progress_col else None
         done_id = done_col[0] if done_col else None
 
-        # Insert mock data with column assignments
+        # Insert mock data with column assignments (all for project 1)
         mock_tasks = [
-            ("Setup Python backend", "Configure FastAPI with SQLite", 1, done_id, 0, "high"),
-            ("Create Vue frontend", "Scaffold Vite Vue-TS project", 1, done_id, 1, "high"),
-            ("Implement CRUD API", "Add endpoints for tasks", 0, progress_id, 0, "medium"),
-            ("Connect frontend to backend", "Use fetch to call API", 0, todo_id, 0, "medium"),
-            ("Add monitoring dashboard", "Track uptime and incidents", 0, todo_id, 1, "low"),
+            ("Setup Python backend", "Configure FastAPI with SQLite", 1, done_id, 0, "high", 1),
+            ("Create Vue frontend", "Scaffold Vite Vue-TS project", 1, done_id, 1, "high", 1),
+            ("Implement CRUD API", "Add endpoints for tasks", 0, progress_id, 0, "medium", 1),
+            ("Connect frontend to backend", "Use fetch to call API", 0, todo_id, 0, "medium", 1),
+            ("Add monitoring dashboard", "Track uptime and incidents", 0, todo_id, 1, "low", 1),
         ]
         cursor.executemany(
-            "INSERT INTO tasks (title, description, completed, column_id, position, priority) VALUES (?, ?, ?, ?, ?, ?)",
+            "INSERT INTO tasks (title, description, completed, column_id, position, priority, project_id) VALUES (?, ?, ?, ?, ?, ?, ?)",
             mock_tasks,
         )
         print(f"Inserted {len(mock_tasks)} mock tasks")
@@ -142,14 +183,14 @@ def init_database() -> None:
     # Check if we have monitors
     cursor.execute("SELECT COUNT(*) FROM monitors")
     if cursor.fetchone()[0] == 0:
-        # Insert demo monitors
+        # Insert demo monitors (all for project 1)
         demo_monitors = [
-            ("Able2Flow API", "http://localhost:8000/", 30),
-            ("Google", "https://www.google.com", 60),
-            ("GitHub", "https://github.com", 60),
+            ("Able2Flow API", "http://localhost:8000/", 30, 1),
+            ("Google", "https://www.google.com", 60, 1),
+            ("GitHub", "https://github.com", 60, 1),
         ]
         cursor.executemany(
-            "INSERT INTO monitors (name, url, check_interval) VALUES (?, ?, ?)",
+            "INSERT INTO monitors (name, url, check_interval, project_id) VALUES (?, ?, ?, ?)",
             demo_monitors,
         )
         print(f"Inserted {len(demo_monitors)} demo monitors")

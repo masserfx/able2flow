@@ -1,8 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, inject, watch, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useApi, type DashboardData, type Incident } from '../composables/useApi'
 
+const { t, te } = useI18n()
 const api = useApi()
+const currentProjectId = inject<Ref<number | null>>('currentProjectId', ref(null))
+
+function translateColumn(name: string): string {
+  const key = `columns.${name}`
+  return te(key) ? t(key) : name
+}
 const dashboard = ref<DashboardData | null>(null)
 const openIncidents = ref<Incident[]>([])
 const loading = ref(true)
@@ -10,9 +18,10 @@ const loading = ref(true)
 async function loadDashboard() {
   loading.value = true
   try {
+    const projectId = currentProjectId.value ?? undefined
     const [dashData, incidents] = await Promise.all([
-      api.getDashboard(),
-      api.getOpenIncidents(),
+      api.getDashboard(projectId),
+      api.getOpenIncidents(projectId),
     ])
     dashboard.value = dashData
     openIncidents.value = incidents
@@ -22,6 +31,8 @@ async function loadDashboard() {
     loading.value = false
   }
 }
+
+watch(currentProjectId, loadDashboard)
 
 const uptimeColor = computed(() => {
   if (!dashboard.value) return 'var(--text-muted)'
@@ -37,13 +48,13 @@ onMounted(loadDashboard)
 <template>
   <div class="dashboard">
     <header class="page-header">
-      <h1>Dashboard</h1>
+      <h1>{{ $t('dashboard.title') }}</h1>
       <button @click="loadDashboard" :disabled="loading">
-        {{ loading ? 'Loading...' : '↻ Refresh' }}
+        {{ loading ? $t('common.loading') : '↻ ' + $t('dashboard.refresh') }}
       </button>
     </header>
 
-    <div v-if="loading && !dashboard" class="loading">Loading dashboard...</div>
+    <div v-if="loading && !dashboard" class="loading">{{ $t('dashboard.loading') }}</div>
 
     <template v-else-if="dashboard">
       <!-- Stats Grid -->
@@ -52,7 +63,7 @@ onMounted(loadDashboard)
           <div class="stat-icon" style="color: var(--accent-blue)">☑</div>
           <div class="stat-content">
             <div class="stat-value">{{ dashboard.tasks.completed }} / {{ dashboard.tasks.total }}</div>
-            <div class="stat-label">Tasks Completed</div>
+            <div class="stat-label">{{ $t('dashboard.tasksCompleted') }}</div>
             <div class="stat-bar">
               <div
                 class="stat-bar-fill"
@@ -68,7 +79,7 @@ onMounted(loadDashboard)
             <div class="stat-value" :style="{ color: uptimeColor }">
               {{ dashboard.monitoring.uptime_24h }}%
             </div>
-            <div class="stat-label">Uptime (24h)</div>
+            <div class="stat-label">{{ $t('dashboard.uptime24h') }}</div>
             <div class="stat-bar">
               <div
                 class="stat-bar-fill"
@@ -82,7 +93,7 @@ onMounted(loadDashboard)
           <div class="stat-icon" :style="{ color: dashboard.monitoring.open_incidents > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }">⚡</div>
           <div class="stat-content">
             <div class="stat-value">{{ dashboard.monitoring.open_incidents }}</div>
-            <div class="stat-label">Open Incidents</div>
+            <div class="stat-label">{{ $t('dashboard.openIncidents') }}</div>
           </div>
         </div>
 
@@ -90,7 +101,7 @@ onMounted(loadDashboard)
           <div class="stat-icon" style="color: var(--accent-magenta)">☰</div>
           <div class="stat-content">
             <div class="stat-value">{{ dashboard.activity.recent_24h }}</div>
-            <div class="stat-label">Actions (24h)</div>
+            <div class="stat-label">{{ $t('dashboard.actions24h') }}</div>
           </div>
         </div>
       </div>
@@ -99,14 +110,14 @@ onMounted(loadDashboard)
       <div class="dashboard-grid">
         <!-- Tasks by Column -->
         <div class="card">
-          <h3>Tasks by Status</h3>
+          <h3>{{ $t('dashboard.tasksByStatus') }}</h3>
           <div class="task-columns">
             <div
               v-for="(count, column) in dashboard.tasks.by_column"
               :key="column"
               class="task-column-item"
             >
-              <span class="column-name">{{ column }}</span>
+              <span class="column-name">{{ translateColumn(column as string) }}</span>
               <span class="column-count">{{ count }}</span>
             </div>
           </div>
@@ -114,10 +125,10 @@ onMounted(loadDashboard)
 
         <!-- Open Incidents -->
         <div class="card">
-          <h3>Open Incidents</h3>
+          <h3>{{ $t('dashboard.openIncidentsTitle') }}</h3>
           <div v-if="openIncidents.length === 0" class="empty-state">
             <span class="empty-icon">✓</span>
-            <span>All systems operational</span>
+            <span>{{ $t('dashboard.allSystemsOperational') }}</span>
           </div>
           <ul v-else class="incident-list">
             <li v-for="incident in openIncidents" :key="incident.id" class="incident-item">
@@ -129,48 +140,48 @@ onMounted(loadDashboard)
 
         <!-- Monitors Status -->
         <div class="card">
-          <h3>Monitors</h3>
+          <h3>{{ $t('dashboard.monitors') }}</h3>
           <div class="monitor-status">
             <div class="monitor-stat">
-              <span class="badge up">Up</span>
+              <span class="badge up">{{ $t('dashboard.up') }}</span>
               <span>{{ dashboard.monitoring.by_status.up || 0 }}</span>
             </div>
             <div class="monitor-stat">
-              <span class="badge down">Down</span>
+              <span class="badge down">{{ $t('dashboard.down') }}</span>
               <span>{{ dashboard.monitoring.by_status.down || 0 }}</span>
             </div>
             <div class="monitor-stat">
-              <span class="badge unknown">Unknown</span>
+              <span class="badge unknown">{{ $t('dashboard.unknown') }}</span>
               <span>{{ dashboard.monitoring.by_status.unknown || 0 }}</span>
             </div>
           </div>
           <div class="response-time">
-            Avg Response: <strong>{{ dashboard.monitoring.avg_response_time_ms }}ms</strong>
+            {{ $t('dashboard.avgResponse') }}: <strong>{{ dashboard.monitoring.avg_response_time_ms }}ms</strong>
           </div>
         </div>
 
         <!-- Tasks by Priority -->
         <div class="card">
-          <h3>Tasks by Priority</h3>
+          <h3>{{ $t('dashboard.tasksByPriority') }}</h3>
           <div class="priority-list">
             <div class="priority-item">
               <span class="priority-dot priority-high">●</span>
-              <span>High</span>
+              <span>{{ $t('dashboard.high') }}</span>
               <span class="priority-count">{{ dashboard.tasks.by_priority.high || 0 }}</span>
             </div>
             <div class="priority-item">
               <span class="priority-dot priority-medium">●</span>
-              <span>Medium</span>
+              <span>{{ $t('dashboard.medium') }}</span>
               <span class="priority-count">{{ dashboard.tasks.by_priority.medium || 0 }}</span>
             </div>
             <div class="priority-item">
               <span class="priority-dot priority-low">●</span>
-              <span>Low</span>
+              <span>{{ $t('dashboard.low') }}</span>
               <span class="priority-count">{{ dashboard.tasks.by_priority.low || 0 }}</span>
             </div>
           </div>
           <div v-if="dashboard.tasks.overdue > 0" class="overdue-warning">
-            ⚠ {{ dashboard.tasks.overdue }} overdue task(s)
+            {{ $t('dashboard.overdueTasksWarning', { count: dashboard.tasks.overdue }) }}
           </div>
         </div>
       </div>

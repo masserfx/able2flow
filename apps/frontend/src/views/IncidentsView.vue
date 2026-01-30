@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, inject, watch, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useApi, type Incident } from '../composables/useApi'
 
+const { t } = useI18n()
 const api = useApi()
+const currentProjectId = inject<Ref<number | null>>('currentProjectId', ref(null))
 const incidents = ref<Incident[]>([])
 const loading = ref(true)
 const filter = ref<'all' | 'open' | 'resolved'>('all')
@@ -13,13 +16,16 @@ const newIncident = ref({ title: '', severity: 'warning' })
 async function loadIncidents() {
   loading.value = true
   try {
-    incidents.value = await api.getIncidents()
+    const projectId = currentProjectId.value ?? undefined
+    incidents.value = await api.getIncidents(undefined, projectId)
   } catch (e) {
     console.error('Failed to load incidents:', e)
   } finally {
     loading.value = false
   }
 }
+
+watch(currentProjectId, loadIncidents)
 
 const filteredIncidents = computed(() => {
   if (filter.value === 'open') {
@@ -29,6 +35,12 @@ const filteredIncidents = computed(() => {
     return incidents.value.filter((i) => i.status === 'resolved')
   }
   return incidents.value
+})
+
+const emptyHintText = computed(() => {
+  if (filter.value === 'all') return t('incidents.allSystemsOperational')
+  if (filter.value === 'open') return t('incidents.noOpenIncidents')
+  return t('incidents.noResolvedIncidents')
 })
 
 async function createIncident() {
@@ -73,6 +85,12 @@ function getStatusClass(status: string) {
   return 'success'
 }
 
+function getStatusText(status: string) {
+  if (status === 'open') return t('incidents.statusOpen')
+  if (status === 'acknowledged') return t('incidents.statusAcknowledged')
+  return t('incidents.statusResolved')
+}
+
 function formatDate(dateStr: string | null) {
   if (!dateStr) return '-'
   return new Date(dateStr).toLocaleString()
@@ -98,24 +116,24 @@ onMounted(loadIncidents)
 <template>
   <div class="incidents-view">
     <header class="page-header">
-      <h1>Incidents</h1>
+      <h1>{{ $t('incidents.title') }}</h1>
       <div class="header-actions">
         <div class="filter-tabs">
           <button
             :class="{ active: filter === 'all' }"
             @click="filter = 'all'"
-          >All</button>
+          >{{ $t('incidents.all') }}</button>
           <button
             :class="{ active: filter === 'open' }"
             @click="filter = 'open'"
-          >Open</button>
+          >{{ $t('incidents.open') }}</button>
           <button
             :class="{ active: filter === 'resolved' }"
             @click="filter = 'resolved'"
-          >Resolved</button>
+          >{{ $t('incidents.resolved') }}</button>
         </div>
         <button class="primary" @click="showNewForm = !showNewForm">
-          {{ showNewForm ? '✕ Cancel' : '+ Report Incident' }}
+          {{ showNewForm ? '✕ ' + $t('incidents.cancel') : '+ ' + $t('incidents.reportIncident') }}
         </button>
       </div>
     </header>
@@ -126,23 +144,23 @@ onMounted(loadIncidents)
         <input
           v-model="newIncident.title"
           type="text"
-          placeholder="Incident description"
+          :placeholder="$t('incidents.incidentDescriptionPlaceholder')"
         />
         <select v-model="newIncident.severity">
-          <option value="warning">Warning</option>
-          <option value="critical">Critical</option>
+          <option value="warning">{{ $t('incidents.warning') }}</option>
+          <option value="critical">{{ $t('incidents.critical') }}</option>
         </select>
-        <button class="primary" @click="createIncident">Report</button>
+        <button class="primary" @click="createIncident">{{ $t('incidents.report') }}</button>
       </div>
     </div>
 
-    <div v-if="loading" class="loading">Loading incidents...</div>
+    <div v-if="loading" class="loading">{{ $t('incidents.loading') }}</div>
 
     <div v-else-if="filteredIncidents.length === 0" class="empty-state card">
       <div class="empty-icon">✓</div>
-      <div class="empty-text">No incidents</div>
+      <div class="empty-text">{{ $t('incidents.noIncidents') }}</div>
       <div class="empty-hint">
-        {{ filter === 'all' ? 'All systems operational' : `No ${filter} incidents` }}
+        {{ emptyHintText }}
       </div>
     </div>
 
@@ -155,13 +173,13 @@ onMounted(loadIncidents)
       >
         <div class="incident-header">
           <span :class="['badge', getSeverityClass(incident.severity)]">
-            {{ incident.severity }}
+            {{ incident.severity === 'critical' ? $t('incidents.critical') : $t('incidents.warning') }}
           </span>
           <span :class="['badge', getStatusClass(incident.status)]">
-            {{ incident.status }}
+            {{ getStatusText(incident.status) }}
           </span>
           <span class="incident-duration">
-            ⏱ {{ getDuration(incident.started_at, incident.resolved_at) }}
+            {{ getDuration(incident.started_at, incident.resolved_at) }}
           </span>
         </div>
 
@@ -169,15 +187,15 @@ onMounted(loadIncidents)
 
         <div class="incident-timeline">
           <div class="timeline-item">
-            <span class="timeline-label">Started</span>
+            <span class="timeline-label">{{ $t('incidents.started') }}</span>
             <span class="timeline-value">{{ formatDate(incident.started_at) }}</span>
           </div>
           <div v-if="incident.acknowledged_at" class="timeline-item">
-            <span class="timeline-label">Acknowledged</span>
+            <span class="timeline-label">{{ $t('incidents.acknowledged') }}</span>
             <span class="timeline-value">{{ formatDate(incident.acknowledged_at) }}</span>
           </div>
           <div v-if="incident.resolved_at" class="timeline-item">
-            <span class="timeline-label">Resolved</span>
+            <span class="timeline-label">{{ $t('incidents.resolvedAt') }}</span>
             <span class="timeline-value">{{ formatDate(incident.resolved_at) }}</span>
           </div>
         </div>
@@ -187,10 +205,10 @@ onMounted(loadIncidents)
             v-if="incident.status === 'open'"
             @click="acknowledgeIncident(incident)"
           >
-            ✓ Acknowledge
+            {{ $t('incidents.acknowledge') }}
           </button>
           <button class="success" @click="resolveIncident(incident)">
-            ✓ Resolve
+            {{ $t('incidents.resolve') }}
           </button>
         </div>
       </div>

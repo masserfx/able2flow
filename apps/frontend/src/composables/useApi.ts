@@ -2,6 +2,14 @@ import { ref } from 'vue'
 
 const API_URL = 'http://localhost:8000/api'
 
+export interface Project {
+  id: number
+  name: string
+  color: string
+  description: string | null
+  created_at: string
+}
+
 export interface Task {
   id: number
   title: string
@@ -105,9 +113,28 @@ export function useApi() {
     }
   }
 
+  // Helper to build query string
+  function buildQuery(params: Record<string, string | number | undefined>): string {
+    const filtered = Object.entries(params).filter(([, v]) => v !== undefined)
+    if (filtered.length === 0) return ''
+    return '?' + filtered.map(([k, v]) => `${k}=${v}`).join('&')
+  }
+
+  // Projects
+  const getProjects = () => fetchJson<Project[]>('/projects')
+
+  const createProject = (project: Partial<Project>) =>
+    fetchJson<Project>('/projects', { method: 'POST', body: JSON.stringify(project) })
+
+  const updateProject = (id: number, project: Partial<Project>) =>
+    fetchJson<Project>(`/projects/${id}`, { method: 'PUT', body: JSON.stringify(project) })
+
+  const deleteProject = (id: number) =>
+    fetchJson<{ message: string }>(`/projects/${id}`, { method: 'DELETE' })
+
   // Tasks
-  const getTasks = (columnId?: number) =>
-    fetchJson<Task[]>(columnId !== undefined ? `/tasks?column_id=${columnId}` : '/tasks')
+  const getTasks = (columnId?: number, projectId?: number) =>
+    fetchJson<Task[]>('/tasks' + buildQuery({ column_id: columnId, project_id: projectId }))
 
   const createTask = (task: Partial<Task>) =>
     fetchJson<Task>('/tasks', { method: 'POST', body: JSON.stringify(task) })
@@ -125,7 +152,8 @@ export function useApi() {
     fetchJson<{ message: string }>(`/tasks/${id}`, { method: 'DELETE' })
 
   // Columns
-  const getColumns = () => fetchJson<Column[]>('/columns')
+  const getColumns = (projectId?: number) =>
+    fetchJson<Column[]>('/columns' + buildQuery({ project_id: projectId }))
 
   const createColumn = (column: Partial<Column>) =>
     fetchJson<Column>('/columns', { method: 'POST', body: JSON.stringify(column) })
@@ -137,7 +165,8 @@ export function useApi() {
     fetchJson<{ message: string }>(`/columns/${id}`, { method: 'DELETE' })
 
   // Monitors
-  const getMonitors = () => fetchJson<Monitor[]>('/monitors')
+  const getMonitors = (projectId?: number) =>
+    fetchJson<Monitor[]>('/monitors' + buildQuery({ project_id: projectId }))
 
   const createMonitor = (monitor: Partial<Monitor>) =>
     fetchJson<Monitor>('/monitors', { method: 'POST', body: JSON.stringify(monitor) })
@@ -152,10 +181,11 @@ export function useApi() {
     fetchJson<{ message: string }>(`/monitors/${id}`, { method: 'DELETE' })
 
   // Incidents
-  const getIncidents = (status?: string) =>
-    fetchJson<Incident[]>(status ? `/incidents?status=${status}` : '/incidents')
+  const getIncidents = (status?: string, projectId?: number) =>
+    fetchJson<Incident[]>('/incidents' + buildQuery({ status, project_id: projectId }))
 
-  const getOpenIncidents = () => fetchJson<Incident[]>('/incidents/open')
+  const getOpenIncidents = (projectId?: number) =>
+    fetchJson<Incident[]>('/incidents/open' + buildQuery({ project_id: projectId }))
 
   const createIncident = (incident: Partial<Incident>) =>
     fetchJson<Incident>('/incidents', { method: 'POST', body: JSON.stringify(incident) })
@@ -170,11 +200,17 @@ export function useApi() {
   const getAuditLogs = (limit = 50) => fetchJson<AuditLog[]>(`/audit?limit=${limit}`)
 
   // Dashboard
-  const getDashboard = () => fetchJson<DashboardData>('/dashboard')
+  const getDashboard = (projectId?: number) =>
+    fetchJson<DashboardData>('/dashboard' + buildQuery({ project_id: projectId }))
 
   return {
     loading,
     error,
+    // Projects
+    getProjects,
+    createProject,
+    updateProject,
+    deleteProject,
     // Tasks
     getTasks,
     createTask,

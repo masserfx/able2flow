@@ -6,7 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import tasks, columns, monitors, incidents, audit, dashboard, ai, sla, events
+from routers import tasks, columns, monitors, incidents, audit, dashboard, ai, sla, events, projects
 from services.monitor_service import monitor_service
 
 
@@ -31,7 +31,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="Able2Flow API",
     description="Task management + Monitoring/Incident response with AI-powered triage, SLA tracking, and event sourcing",
-    version="0.2.0",
+    version="0.3.0",
     lifespan=lifespan,
 )
 
@@ -54,6 +54,7 @@ app.include_router(dashboard.router)
 app.include_router(ai.router)
 app.include_router(sla.router)
 app.include_router(events.router)
+app.include_router(projects.router)
 
 
 @app.get("/")

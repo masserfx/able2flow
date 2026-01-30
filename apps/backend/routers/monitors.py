@@ -14,6 +14,7 @@ class MonitorCreate(BaseModel):
     name: str
     url: str
     check_interval: int = 60
+    project_id: int | None = None
 
 
 class MonitorUpdate(BaseModel):
@@ -46,10 +47,16 @@ def row_to_monitor(row) -> dict:
 
 
 @router.get("", response_model=list[Monitor])
-def list_monitors() -> list[dict]:
-    """Get all monitors."""
+def list_monitors(project_id: int | None = None) -> list[dict]:
+    """Get all monitors, optionally filtered by project."""
     with get_db() as conn:
-        cursor = conn.execute("SELECT * FROM monitors ORDER BY name")
+        if project_id is not None:
+            cursor = conn.execute(
+                "SELECT * FROM monitors WHERE project_id = ? ORDER BY name",
+                (project_id,),
+            )
+        else:
+            cursor = conn.execute("SELECT * FROM monitors ORDER BY name")
         return [row_to_monitor(row) for row in cursor.fetchall()]
 
 

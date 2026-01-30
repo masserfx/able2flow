@@ -10,50 +10,75 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 
 @router.get("")
-def get_dashboard() -> dict:
-    """Get dashboard summary with all key metrics."""
+def get_dashboard(project_id: int | None = None) -> dict:
+    """Get dashboard summary with all key metrics, optionally filtered by project."""
     with get_db() as conn:
+        # Build project filter
+        project_filter = ""
+        project_params: tuple = ()
+        if project_id is not None:
+            project_filter = " WHERE project_id = ?"
+            project_params = (project_id,)
+
         # Task statistics
-        cursor = conn.execute("SELECT COUNT(*) as total FROM tasks")
+        cursor = conn.execute(f"SELECT COUNT(*) as total FROM tasks{project_filter}", project_params)
         total_tasks = cursor.fetchone()["total"]
 
-        cursor = conn.execute("SELECT COUNT(*) as completed FROM tasks WHERE completed = 1")
+        task_completed_filter = " WHERE completed = 1" if project_id is None else " WHERE completed = 1 AND project_id = ?"
+        cursor = conn.execute(f"SELECT COUNT(*) as completed FROM tasks{task_completed_filter}", project_params)
         completed_tasks = cursor.fetchone()["completed"]
 
+        task_priority_filter = " WHERE completed = 0" if project_id is None else " WHERE completed = 0 AND project_id = ?"
         cursor = conn.execute(
-            """
+            f"""
             SELECT priority, COUNT(*) as count
             FROM tasks
-            WHERE completed = 0
+            {task_priority_filter}
             GROUP BY priority
-            """
+            """,
+            project_params,
         )
         tasks_by_priority = {row["priority"]: row["count"] for row in cursor.fetchall()}
 
         # Tasks by column
-        cursor = conn.execute(
-            """
-            SELECT c.name as column_name, COUNT(t.id) as count
-            FROM columns c
-            LEFT JOIN tasks t ON t.column_id = c.id
-            GROUP BY c.id, c.name
-            ORDER BY c.position
-            """
-        )
+        if project_id is not None:
+            cursor = conn.execute(
+                """
+                SELECT c.name as column_name, COUNT(t.id) as count
+                FROM columns c
+                LEFT JOIN tasks t ON t.column_id = c.id AND t.project_id = ?
+                WHERE c.project_id = ?
+                GROUP BY c.id, c.name
+                ORDER BY c.position
+                """,
+                (project_id, project_id),
+            )
+        else:
+            cursor = conn.execute(
+                """
+                SELECT c.name as column_name, COUNT(t.id) as count
+                FROM columns c
+                LEFT JOIN tasks t ON t.column_id = c.id
+                GROUP BY c.id, c.name
+                ORDER BY c.position
+                """
+            )
         tasks_by_column = {row["column_name"]: row["count"] for row in cursor.fetchall()}
 
         # Overdue tasks
+        overdue_filter = " WHERE due_date < date('now') AND completed = 0" if project_id is None else " WHERE due_date < date('now') AND completed = 0 AND project_id = ?"
         cursor = conn.execute(
-            """
+            f"""
             SELECT COUNT(*) as overdue
             FROM tasks
-            WHERE due_date < date('now') AND completed = 0
-            """
+            {overdue_filter}
+            """,
+            project_params,
         )
         overdue_tasks = cursor.fetchone()["overdue"]
 
     # Monitoring stats
-    monitor_stats = get_monitor_stats()
+    monitor_stats = get_monitor_stats(project_id=project_id)
 
     # Audit stats
     audit_stats = audit_service.get_audit_stats()

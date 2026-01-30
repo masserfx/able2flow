@@ -1,16 +1,45 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, provide, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import LanguageSwitcher from './components/LanguageSwitcher.vue'
+import ProjectSelector from './components/ProjectSelector.vue'
 
+const { t } = useI18n()
 const route = useRoute()
 
-const navItems = [
-  { path: '/', name: 'Dashboard', icon: '◉' },
-  { path: '/board', name: 'Board', icon: '▦' },
-  { path: '/monitors', name: 'Monitors', icon: '◎' },
-  { path: '/incidents', name: 'Incidents', icon: '⚡' },
-  { path: '/audit', name: 'Audit Log', icon: '☰' },
-]
+const STORAGE_KEY = 'able2flow_current_project'
+
+const currentProjectId = ref<number | null>(null)
+
+function loadProjectFromStorage() {
+  const stored = localStorage.getItem(STORAGE_KEY)
+  if (stored) {
+    const parsed = parseInt(stored, 10)
+    currentProjectId.value = isNaN(parsed) ? null : parsed
+  }
+}
+
+function onProjectChange(projectId: number | null) {
+  currentProjectId.value = projectId
+  if (projectId === null) {
+    localStorage.removeItem(STORAGE_KEY)
+  } else {
+    localStorage.setItem(STORAGE_KEY, String(projectId))
+  }
+}
+
+provide('currentProjectId', currentProjectId)
+
+onMounted(loadProjectFromStorage)
+
+const navItems = computed(() => [
+  { path: '/', name: t('nav.dashboard'), icon: '◉' },
+  { path: '/board', name: t('nav.board'), icon: '▦' },
+  { path: '/monitors', name: t('nav.monitors'), icon: '◎' },
+  { path: '/incidents', name: t('nav.incidents'), icon: '⚡' },
+  { path: '/audit', name: t('nav.auditLog'), icon: '☰' },
+])
 
 const currentPath = computed(() => route.path)
 </script>
@@ -22,6 +51,10 @@ const currentPath = computed(() => route.path)
         <span class="logo-icon">◈</span>
         <span class="logo-text">Able2Flow</span>
       </div>
+      <ProjectSelector
+        v-model="currentProjectId"
+        @change="onProjectChange"
+      />
       <ul class="nav-list">
         <li v-for="item in navItems" :key="item.path">
           <router-link
@@ -35,6 +68,7 @@ const currentPath = computed(() => route.path)
         </li>
       </ul>
       <div class="sidebar-footer">
+        <LanguageSwitcher />
         <span class="version">v0.1.0</span>
       </div>
     </nav>
@@ -119,6 +153,9 @@ const currentPath = computed(() => route.path)
 }
 
 .sidebar-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   padding: 0 1.5rem;
   margin-top: auto;
 }

@@ -1,7 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject, watch, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useApi, type Task, type Column } from '../composables/useApi'
 
+const { t, te } = useI18n()
+const currentProjectId = inject<Ref<number | null>>('currentProjectId', ref(null))
+
+function translateColumn(name: string): string {
+  const key = `columns.${name}`
+  return te(key) ? t(key) : name
+}
 const api = useApi()
 const columns = ref<Column[]>([])
 const tasks = ref<Task[]>([])
@@ -16,9 +24,10 @@ const draggedTask = ref<Task | null>(null)
 async function loadBoard() {
   loading.value = true
   try {
+    const projectId = currentProjectId.value ?? undefined
     const [cols, allTasks] = await Promise.all([
-      api.getColumns(),
-      api.getTasks(),
+      api.getColumns(projectId),
+      api.getTasks(undefined, projectId),
     ])
     columns.value = cols
     tasks.value = allTasks
@@ -31,6 +40,8 @@ async function loadBoard() {
     loading.value = false
   }
 }
+
+watch(currentProjectId, loadBoard)
 
 function getTasksForColumn(columnId: number) {
   return tasks.value
@@ -63,7 +74,7 @@ async function toggleTaskComplete(task: Task) {
 }
 
 async function deleteTask(task: Task) {
-  if (!confirm(`Delete "${task.title}"?`)) return
+  if (!confirm(t('board.deleteConfirm', { title: task.title }))) return
   try {
     await api.deleteTask(task.id)
     await loadBoard()
@@ -109,9 +120,9 @@ onMounted(loadBoard)
 <template>
   <div class="board-view">
     <header class="page-header">
-      <h1>Kanban Board</h1>
+      <h1>{{ $t('board.title') }}</h1>
       <button class="primary" @click="showNewTaskForm = !showNewTaskForm">
-        {{ showNewTaskForm ? '✕ Cancel' : '+ New Task' }}
+        {{ showNewTaskForm ? '✕ ' + $t('board.cancel') : '+ ' + $t('board.newTask') }}
       </button>
     </header>
 
@@ -120,18 +131,18 @@ onMounted(loadBoard)
       <input
         v-model="newTaskTitle"
         type="text"
-        placeholder="Task title"
+        :placeholder="$t('board.taskTitlePlaceholder')"
         @keyup.enter="createTask"
       />
       <select v-model="newTaskColumnId">
         <option v-for="col in columns" :key="col.id" :value="col.id">
-          {{ col.name }}
+          {{ translateColumn(col.name) }}
         </option>
       </select>
-      <button class="primary" @click="createTask">Add Task</button>
+      <button class="primary" @click="createTask">{{ $t('board.addTask') }}</button>
     </div>
 
-    <div v-if="loading" class="loading">Loading board...</div>
+    <div v-if="loading" class="loading">{{ $t('board.loading') }}</div>
 
     <!-- Kanban Board -->
     <div v-else class="kanban-board">
@@ -143,7 +154,7 @@ onMounted(loadBoard)
         @drop="onDrop(column.id, getTasksForColumn(column.id).length)"
       >
         <div class="column-header" :style="{ borderTopColor: column.color }">
-          <span class="column-name">{{ column.name }}</span>
+          <span class="column-name">{{ translateColumn(column.name) }}</span>
           <span class="column-count">{{ getTasksForColumn(column.id).length }}</span>
         </div>
 
@@ -173,7 +184,7 @@ onMounted(loadBoard)
             </div>
             <div class="task-footer">
               <span v-if="task.due_date" class="task-due">
-                📅 {{ task.due_date }}
+                {{ task.due_date }}
               </span>
               <button class="task-delete" @click="deleteTask(task)">✕</button>
             </div>
@@ -186,7 +197,7 @@ onMounted(loadBoard)
             @dragover.prevent
             @drop="onDrop(column.id, 0)"
           >
-            Drop tasks here
+            {{ $t('board.dropTasksHere') }}
           </div>
         </div>
       </div>

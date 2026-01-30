@@ -14,6 +14,7 @@ class ColumnCreate(BaseModel):
     position: int | None = None
     color: str = "#3b82f6"
     board_id: int = 1
+    project_id: int | None = None
 
 
 class ColumnUpdate(BaseModel):
@@ -44,13 +45,19 @@ def row_to_column(row) -> dict:
 
 
 @router.get("", response_model=list[Column])
-def list_columns(board_id: int = 1) -> list[dict]:
-    """Get all columns for a board."""
+def list_columns(board_id: int = 1, project_id: int | None = None) -> list[dict]:
+    """Get all columns for a board, optionally filtered by project."""
     with get_db() as conn:
-        cursor = conn.execute(
-            "SELECT * FROM columns WHERE board_id = ? ORDER BY position",
-            (board_id,),
-        )
+        if project_id is not None:
+            cursor = conn.execute(
+                "SELECT * FROM columns WHERE board_id = ? AND project_id = ? ORDER BY position",
+                (board_id, project_id),
+            )
+        else:
+            cursor = conn.execute(
+                "SELECT * FROM columns WHERE board_id = ? ORDER BY position",
+                (board_id,),
+            )
         return [row_to_column(row) for row in cursor.fetchall()]
 
 

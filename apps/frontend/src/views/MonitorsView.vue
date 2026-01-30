@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, inject, watch, type Ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { useApi, type Monitor } from '../composables/useApi'
 
+const { t } = useI18n()
 const api = useApi()
+const currentProjectId = inject<Ref<number | null>>('currentProjectId', ref(null))
 const monitors = ref<Monitor[]>([])
 const loading = ref(true)
 const checkingId = ref<number | null>(null)
@@ -13,13 +16,16 @@ const newMonitor = ref({ name: '', url: '', check_interval: 60 })
 async function loadMonitors() {
   loading.value = true
   try {
-    monitors.value = await api.getMonitors()
+    const projectId = currentProjectId.value ?? undefined
+    monitors.value = await api.getMonitors(projectId)
   } catch (e) {
     console.error('Failed to load monitors:', e)
   } finally {
     loading.value = false
   }
 }
+
+watch(currentProjectId, loadMonitors)
 
 async function createMonitor() {
   if (!newMonitor.value.name || !newMonitor.value.url) return
@@ -46,7 +52,7 @@ async function checkMonitor(monitor: Monitor) {
 }
 
 async function deleteMonitor(monitor: Monitor) {
-  if (!confirm(`Delete monitor "${monitor.name}"?`)) return
+  if (!confirm(t('monitors.deleteConfirm', { name: monitor.name }))) return
   try {
     await api.deleteMonitor(monitor.id)
     await loadMonitors()
@@ -62,7 +68,7 @@ function getStatusClass(status: string) {
 }
 
 function formatLastCheck(lastCheck: string | null) {
-  if (!lastCheck) return 'Never'
+  if (!lastCheck) return t('common.never')
   const date = new Date(lastCheck)
   return date.toLocaleString()
 }
@@ -73,9 +79,9 @@ onMounted(loadMonitors)
 <template>
   <div class="monitors-view">
     <header class="page-header">
-      <h1>Monitors</h1>
+      <h1>{{ $t('monitors.title') }}</h1>
       <button class="primary" @click="showNewForm = !showNewForm">
-        {{ showNewForm ? '✕ Cancel' : '+ New Monitor' }}
+        {{ showNewForm ? '✕ ' + $t('monitors.cancel') : '+ ' + $t('monitors.newMonitor') }}
       </button>
     </header>
 
@@ -85,29 +91,29 @@ onMounted(loadMonitors)
         <input
           v-model="newMonitor.name"
           type="text"
-          placeholder="Monitor name"
+          :placeholder="$t('monitors.monitorNamePlaceholder')"
         />
         <input
           v-model="newMonitor.url"
           type="url"
-          placeholder="https://example.com"
+          :placeholder="$t('monitors.urlPlaceholder')"
         />
         <select v-model="newMonitor.check_interval">
-          <option :value="30">30s</option>
-          <option :value="60">1m</option>
-          <option :value="300">5m</option>
-          <option :value="600">10m</option>
+          <option :value="30">{{ $t('monitors.intervalOptions.30s') }}</option>
+          <option :value="60">{{ $t('monitors.intervalOptions.1m') }}</option>
+          <option :value="300">{{ $t('monitors.intervalOptions.5m') }}</option>
+          <option :value="600">{{ $t('monitors.intervalOptions.10m') }}</option>
         </select>
-        <button class="primary" @click="createMonitor">Add</button>
+        <button class="primary" @click="createMonitor">{{ $t('monitors.add') }}</button>
       </div>
     </div>
 
-    <div v-if="loading" class="loading">Loading monitors...</div>
+    <div v-if="loading" class="loading">{{ $t('monitors.loading') }}</div>
 
     <div v-else-if="monitors.length === 0" class="empty-state card">
       <div class="empty-icon">◎</div>
-      <div class="empty-text">No monitors configured</div>
-      <div class="empty-hint">Add a monitor to start tracking uptime</div>
+      <div class="empty-text">{{ $t('monitors.noMonitorsConfigured') }}</div>
+      <div class="empty-hint">{{ $t('monitors.addMonitorHint') }}</div>
     </div>
 
     <!-- Monitors Grid -->
@@ -125,11 +131,11 @@ onMounted(loadMonitors)
 
         <div class="monitor-details">
           <div class="detail">
-            <span class="detail-label">Interval</span>
+            <span class="detail-label">{{ $t('monitors.interval') }}</span>
             <span class="detail-value">{{ monitor.check_interval }}s</span>
           </div>
           <div class="detail">
-            <span class="detail-label">Last Check</span>
+            <span class="detail-label">{{ $t('monitors.lastCheck') }}</span>
             <span class="detail-value">{{ formatLastCheck(monitor.last_check) }}</span>
           </div>
         </div>
@@ -139,9 +145,9 @@ onMounted(loadMonitors)
             @click="checkMonitor(monitor)"
             :disabled="checkingId === monitor.id"
           >
-            {{ checkingId === monitor.id ? 'Checking...' : '↻ Check Now' }}
+            {{ checkingId === monitor.id ? $t('monitors.checking') : '↻ ' + $t('monitors.checkNow') }}
           </button>
-          <button class="danger" @click="deleteMonitor(monitor)">Delete</button>
+          <button class="danger" @click="deleteMonitor(monitor)">{{ $t('monitors.delete') }}</button>
         </div>
       </div>
     </div>

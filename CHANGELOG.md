@@ -2,6 +2,43 @@
 
 All notable changes to Able2Flow.
 
+## [0.3.0] - 2026-01-30
+
+### Added
+
+#### Multi-Project Support
+- **Projects**: Each project has its own kanban board, tasks, monitors, and incidents
+- **Project Selector**: Dropdown in sidebar to switch between projects
+- **Data Isolation**: All data filtered by project context
+- **Default Columns**: New projects auto-created with 4 default columns
+- New endpoints:
+  - `GET /api/projects`
+  - `POST /api/projects`
+  - `GET /api/projects/{id}`
+  - `PUT /api/projects/{id}`
+  - `DELETE /api/projects/{id}`
+
+#### Internationalization (i18n)
+- **Czech Localization**: Full Czech translation with diacritics
+- **English Localization**: Complete English translation
+- **Language Switcher**: Toggle between 🇨🇿 CZ and 🇬🇧 EN
+- **Translated Elements**:
+  - Navigation menu
+  - Dashboard labels and stats
+  - Kanban column names (K řešení, Připraveno, Probíhá, Hotovo)
+  - Monitor status badges
+  - Incident workflow buttons
+  - Audit log actions
+- **Persistence**: Language preference saved to localStorage
+
+### Changed
+- All API endpoints support optional `project_id` query parameter
+- Database schema updated with `project_id` foreign keys
+- Frontend uses Vue 3 provide/inject for project context
+- API version bumped to 0.3.0
+
+---
+
 ## [0.2.0] - 2026-01-30
 
 ### Added
