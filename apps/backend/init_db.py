@@ -110,9 +110,11 @@ def init_database() -> None:
             due_date TEXT,
             project_id INTEGER DEFAULT 1,
             google_event_id TEXT,
+            source_incident_id INTEGER,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (column_id) REFERENCES columns(id),
-            FOREIGN KEY (project_id) REFERENCES projects(id)
+            FOREIGN KEY (project_id) REFERENCES projects(id),
+            FOREIGN KEY (source_incident_id) REFERENCES incidents(id)
         )
     """)
 
@@ -233,6 +235,13 @@ def _run_migrations(cursor) -> None:
     try:
         cursor.execute("ALTER TABLE tasks ADD COLUMN google_event_id TEXT")
         logger.info("Migration: Added google_event_id column")
+    except sqlite3.OperationalError:
+        pass
+
+    # Add source_incident_id column if missing
+    try:
+        cursor.execute("ALTER TABLE tasks ADD COLUMN source_incident_id INTEGER REFERENCES incidents(id)")
+        logger.info("Migration: Added source_incident_id column")
     except sqlite3.OperationalError:
         pass
 

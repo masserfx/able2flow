@@ -314,6 +314,126 @@ Be concise and actionable."""
             "auto_generated": True,
         }
 
+    async def suggest_task_from_incident(self, incident_id: int, language: str = "en") -> dict[str, Any]:
+        """Use AI to suggest task details based on incident analysis."""
+        context = await self._gather_incident_context(incident_id)
+        incident = context["incident"]
+
+        if not self.api_key:
+            # Fallback without AI
+            if language == "cs":
+                return {
+                    "title": f"Opravit příčinu incidentu #{incident_id}",
+                    "description": f"Incident: {incident['title']}\n\nÚkoly:\n- Analyzovat root cause\n- Implementovat opravu\n- Přidat monitoring",
+                    "priority": "high" if incident["severity"] == "critical" else "medium",
+                    "ai_generated": False,
+                }
+            return {
+                "title": f"Fix root cause from incident #{incident_id}",
+                "description": f"Incident: {incident['title']}\n\nTasks:\n- Analyze root cause\n- Implement fix\n- Add monitoring",
+                "priority": "high" if incident["severity"] == "critical" else "medium",
+                "ai_generated": False,
+            }
+
+        # Language-specific instructions
+        if language == "cs":
+            lang_instruction = "DŮLEŽITÉ: Odpověz v češtině."
+            task_context = "follow-up úkol"
+        else:
+            lang_instruction = "Respond in English."
+            task_context = "follow-up task"
+
+        prompt = f"""{lang_instruction}
+
+Based on this incident, suggest a {task_context} to prevent recurrence.
+
+INCIDENT:
+- ID: {incident['id']}
+- Title: {incident['title']}
+- Severity: {incident['severity']}
+- Status: {incident['status']}
+- Started: {incident['started_at']}
+- Resolved: {incident.get('resolved_at', 'Not yet')}
+
+Respond in JSON format:
+{{
+    "title": "Brief actionable task title (max 80 chars)",
+    "description": "Detailed description with:\n- Root cause summary\n- Steps to fix\n- Prevention measures",
+    "priority": "high|medium|low"
+}}
+
+Be specific and actionable."""
+
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    self.base_url,
+                    headers={
+                        "x-api-key": self.api_key,
+                        "anthropic-version": "2023-06-01",
+                        "content-type": "application/json",
+                    },
+                    json={
+                        "model": self.model,
+                        "max_tokens": 512,
+                        "messages": [{"role": "user", "content": prompt}],
+                    },
+                    timeout=30.0,
+                )
+                response.raise_for_status()
+                result = response.json()
+
+                import json
+                import re
+                content = result["content"][0]["text"]
+
+                # Try to parse JSON from response
+                try:
+                    if "{" in content and "}" in content:
+                        json_start = content.index("{")
+                        json_end = content.rindex("}") + 1
+                        json_str = content[json_start:json_end]
+                        suggestion = json.loads(json_str)
+                        suggestion["ai_generated"] = True
+                        suggestion["incident_id"] = incident_id
+                        return suggestion
+                except json.JSONDecodeError:
+                    pass
+
+                # Fallback: extract values using regex
+                title_match = re.search(r'"title"\s*:\s*"([^"]+)"', content)
+                desc_match = re.search(r'"description"\s*:\s*"([^"]*(?:\\.[^"]*)*)"', content, re.DOTALL)
+                priority_match = re.search(r'"priority"\s*:\s*"(high|medium|low)"', content)
+
+                if title_match:
+                    return {
+                        "title": title_match.group(1),
+                        "description": desc_match.group(1).replace('\\n', '\n') if desc_match else "",
+                        "priority": priority_match.group(1) if priority_match else "medium",
+                        "ai_generated": True,
+                        "incident_id": incident_id,
+                    }
+
+        except Exception as e:
+            import logging
+            logging.error(f"AI task suggestion failed: {e}")
+            # Fall through to fallback
+
+        # Fallback
+        if language == "cs":
+            return {
+                "title": f"Opravit příčinu incidentu #{incident_id}",
+                "description": f"Incident: {incident['title']}",
+                "priority": "high" if incident["severity"] == "critical" else "medium",
+                "ai_generated": False,
+            }
+        return {
+            "title": f"Fix root cause from incident #{incident_id}",
+            "description": f"Incident: {incident['title']}",
+            "priority": "high" if incident["severity"] == "critical" else "medium",
+            "ai_generated": False,
+        }
+
 
 # Global instance
 ai_triage = AITriageService()

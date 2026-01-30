@@ -71,6 +71,118 @@ function getConfidenceColor(confidence: number) {
   return '#f7768e'
 }
 
+// Create Task from Incident
+interface TaskSuggestion {
+  title: string
+  description: string
+  priority: string
+  ai_generated: boolean
+  suggested_project_id: number | null
+}
+
+interface Project {
+  id: number
+  name: string
+}
+
+const showCreateTaskModal = ref(false)
+const createTaskIncidentId = ref<number | null>(null)
+const taskSuggestion = ref<TaskSuggestion | null>(null)
+const loadingSuggestion = ref(false)
+const creatingTask = ref(false)
+const projects = ref<Project[]>([])
+const selectedProjectId = ref<number | null>(null)
+
+async function loadProjects() {
+  try {
+    projects.value = await api.getProjects()
+  } catch (e) {
+    console.error('Failed to load projects:', e)
+  }
+}
+
+async function openCreateTaskModal(incident: Incident) {
+  createTaskIncidentId.value = incident.id
+  taskSuggestion.value = null
+  showCreateTaskModal.value = true
+  loadingSuggestion.value = true
+
+  // Load projects if not loaded
+  if (projects.value.length === 0) {
+    await loadProjects()
+  }
+
+  const lang = locale.value === 'cs' ? 'cs' : 'en'
+
+  try {
+    const response = await fetch(
+      `http://localhost:8000/api/incidents/${incident.id}/suggest-task?lang=${lang}`
+    )
+    taskSuggestion.value = await response.json()
+
+    // Set suggested project or current project
+    if (taskSuggestion.value?.suggested_project_id) {
+      selectedProjectId.value = taskSuggestion.value.suggested_project_id
+    } else if (currentProjectId.value) {
+      selectedProjectId.value = currentProjectId.value
+    } else if (projects.value.length > 0) {
+      const firstProject = projects.value[0]
+      if (firstProject) {
+        selectedProjectId.value = firstProject.id
+      }
+    }
+  } catch (e) {
+    console.error('Failed to get task suggestion:', e)
+    const isCs = locale.value === 'cs'
+    taskSuggestion.value = {
+      title: isCs ? 'Follow-up úkol' : 'Follow-up task',
+      description: isCs ? 'Vytvořeno z incidentu' : 'Created from incident',
+      priority: 'medium',
+      ai_generated: false,
+      suggested_project_id: null,
+    }
+  } finally {
+    loadingSuggestion.value = false
+  }
+}
+
+function closeCreateTaskModal() {
+  showCreateTaskModal.value = false
+  createTaskIncidentId.value = null
+  taskSuggestion.value = null
+}
+
+async function createTaskFromIncident() {
+  if (!createTaskIncidentId.value || !selectedProjectId.value || !taskSuggestion.value) return
+
+  creatingTask.value = true
+  const lang = locale.value === 'cs' ? 'cs' : 'en'
+
+  try {
+    const response = await fetch(
+      `http://localhost:8000/api/incidents/${createTaskIncidentId.value}/create-task?lang=${lang}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          project_id: selectedProjectId.value,
+          use_ai_suggestion: true,
+        }),
+      }
+    )
+
+    if (response.ok) {
+      closeCreateTaskModal()
+      // Show success message or redirect to board
+      alert(locale.value === 'cs' ? 'Task vytvořen!' : 'Task created!')
+    }
+  } catch (e) {
+    console.error('Failed to create task:', e)
+  } finally {
+    creatingTask.value = false
+  }
+}
+
 async function loadIncidents() {
   loading.value = true
   try {
@@ -266,6 +378,12 @@ onMounted(loadIncidents)
           >
             {{ analyzingIncidentId === incident.id ? '⏳ Analyzing...' : '🤖 AI Triage' }}
           </button>
+          <button
+            class="task-btn"
+            @click="openCreateTaskModal(incident)"
+          >
+            📋 {{ locale === 'cs' ? 'Vytvořit Task' : 'Create Task' }}
+          </button>
           <template v-if="incident.status !== 'resolved'">
             <button
               v-if="incident.status === 'open'"
@@ -349,6 +467,71 @@ onMounted(loadIncidents)
             <span class="analyzed-at">
               Analyzed: {{ new Date(aiAnalysis.analyzed_at).toLocaleString() }}
             </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Create Task Modal -->
+    <div v-if="showCreateTaskModal" class="modal-overlay" @click.self="closeCreateTaskModal">
+      <div class="modal task-modal">
+        <div class="modal-header task-header">
+          <h2>📋 {{ locale === 'cs' ? 'Vytvořit Task z Incidentu' : 'Create Task from Incident' }}</h2>
+          <button class="close-btn" @click="closeCreateTaskModal">✕</button>
+        </div>
+
+        <div v-if="loadingSuggestion" class="modal-loading">
+          <div class="spinner"></div>
+          <p>{{ locale === 'cs' ? 'Claude navrhuje úkol...' : 'Claude is suggesting a task...' }}</p>
+        </div>
+
+        <div v-else-if="taskSuggestion" class="task-form">
+          <div v-if="taskSuggestion.ai_generated" class="ai-badge powered" style="margin-bottom: 1rem;">
+            ✨ {{ locale === 'cs' ? 'AI Návrh' : 'AI Suggested' }}
+          </div>
+
+          <div class="form-group">
+            <label>{{ locale === 'cs' ? 'Projekt' : 'Project' }}</label>
+            <select v-model="selectedProjectId">
+              <option v-for="project in projects" :key="project.id" :value="project.id">
+                {{ project.name }}
+              </option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>{{ locale === 'cs' ? 'Název úkolu' : 'Task Title' }}</label>
+            <input type="text" v-model="taskSuggestion.title" />
+          </div>
+
+          <div class="form-group">
+            <label>{{ locale === 'cs' ? 'Popis' : 'Description' }}</label>
+            <textarea v-model="taskSuggestion.description" rows="6"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>{{ locale === 'cs' ? 'Priorita' : 'Priority' }}</label>
+            <select v-model="taskSuggestion.priority">
+              <option value="low">{{ locale === 'cs' ? 'Nízká' : 'Low' }}</option>
+              <option value="medium">{{ locale === 'cs' ? 'Střední' : 'Medium' }}</option>
+              <option value="high">{{ locale === 'cs' ? 'Vysoká' : 'High' }}</option>
+            </select>
+          </div>
+
+          <div class="modal-actions">
+            <button @click="closeCreateTaskModal">
+              {{ locale === 'cs' ? 'Zrušit' : 'Cancel' }}
+            </button>
+            <button
+              class="primary"
+              @click="createTaskFromIncident"
+              :disabled="creatingTask || !selectedProjectId"
+            >
+              {{ creatingTask
+                ? (locale === 'cs' ? 'Vytvářím...' : 'Creating...')
+                : (locale === 'cs' ? 'Vytvořit Task' : 'Create Task')
+              }}
+            </button>
           </div>
         </div>
       </div>
@@ -674,5 +857,83 @@ onMounted(loadIncidents)
 .analyzed-at {
   font-size: 0.75rem;
   color: var(--text-muted);
+}
+
+/* Task Button */
+.task-btn {
+  background: linear-gradient(135deg, #7aa2f7 0%, #9ece6a 100%);
+  color: #1a1b26;
+  font-weight: 600;
+  border: none;
+}
+
+.task-btn:hover {
+  opacity: 0.9;
+}
+
+/* Task Modal */
+.task-modal {
+  background: var(--bg-lighter);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 550px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.task-header {
+  background: linear-gradient(135deg, rgba(122, 162, 247, 0.1) 0%, rgba(158, 206, 106, 0.1) 100%);
+}
+
+.task-form {
+  padding: 1.5rem;
+}
+
+.form-group {
+  margin-bottom: 1.25rem;
+}
+
+.form-group label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-dark);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+  font-family: inherit;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
 }
 </style>

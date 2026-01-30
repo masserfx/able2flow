@@ -1,12 +1,14 @@
 """Incidents router for incident management."""
 
 from datetime import datetime
+from typing import Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from pydantic import BaseModel
 
 from database import get_db
 from services import audit_service
+from services.ai_triage_service import ai_triage
 
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 
@@ -221,3 +223,117 @@ def resolve_incident(incident_id: int) -> dict:
         audit_service.log_action("incident", incident_id, "resolve", old_value=old_value, new_value=result)
 
         return result
+
+
+class CreateTaskFromIncident(BaseModel):
+    project_id: int
+    column_id: Optional[int] = None
+    use_ai_suggestion: bool = True
+
+
+@router.get("/{incident_id}/suggest-task")
+async def suggest_task_from_incident(
+    incident_id: int,
+    lang: str = Query("en", description="Response language: 'en' or 'cs'")
+) -> dict:
+    """Get AI-suggested task details based on incident.
+
+    Returns suggested title, description, and priority for a follow-up task.
+    """
+    with get_db() as conn:
+        cursor = conn.execute("SELECT * FROM incidents WHERE id = ?", (incident_id,))
+        incident = cursor.fetchone()
+        if not incident:
+            raise HTTPException(status_code=404, detail="Incident not found")
+
+        # Get project_id from monitor if available
+        suggested_project_id = None
+        if incident["monitor_id"]:
+            cursor = conn.execute(
+                "SELECT project_id FROM monitors WHERE id = ?",
+                (incident["monitor_id"],)
+            )
+            monitor = cursor.fetchone()
+            if monitor:
+                suggested_project_id = monitor["project_id"]
+
+    suggestion = await ai_triage.suggest_task_from_incident(incident_id, language=lang)
+    suggestion["suggested_project_id"] = suggested_project_id
+
+    return suggestion
+
+
+@router.post("/{incident_id}/create-task")
+async def create_task_from_incident(
+    incident_id: int,
+    data: CreateTaskFromIncident,
+    lang: str = Query("en", description="Response language: 'en' or 'cs'")
+) -> dict:
+    """Create a follow-up task from an incident.
+
+    Optionally uses AI to generate task title and description.
+    """
+    with get_db() as conn:
+        cursor = conn.execute("SELECT * FROM incidents WHERE id = ?", (incident_id,))
+        incident = cursor.fetchone()
+        if not incident:
+            raise HTTPException(status_code=404, detail="Incident not found")
+
+        # Verify project exists
+        cursor = conn.execute("SELECT id FROM projects WHERE id = ?", (data.project_id,))
+        if not cursor.fetchone():
+            raise HTTPException(status_code=404, detail="Project not found")
+
+        # Get or determine column_id
+        column_id = data.column_id
+        if not column_id:
+            # Use first column of the project (usually "Backlog" or "To Do")
+            cursor = conn.execute(
+                "SELECT id FROM columns WHERE project_id = ? ORDER BY position LIMIT 1",
+                (data.project_id,)
+            )
+            first_col = cursor.fetchone()
+            if first_col:
+                column_id = first_col["id"]
+            else:
+                raise HTTPException(status_code=400, detail="Project has no columns")
+
+        # Get task suggestion
+        if data.use_ai_suggestion:
+            suggestion = await ai_triage.suggest_task_from_incident(incident_id, language=lang)
+            title = suggestion["title"]
+            description = suggestion["description"]
+            priority = suggestion.get("priority", "medium")
+        else:
+            title = f"Follow-up: {incident['title'][:50]}"
+            description = f"Created from incident #{incident_id}\n\nOriginal incident: {incident['title']}"
+            priority = "high" if incident["severity"] == "critical" else "medium"
+
+        # Create the task
+        cursor = conn.execute(
+            """
+            INSERT INTO tasks (title, description, column_id, project_id, priority, source_incident_id, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (title, description, column_id, data.project_id, priority, incident_id, datetime.now().isoformat()),
+        )
+        conn.commit()
+        task_id = cursor.lastrowid
+
+        # Get created task
+        cursor = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+        task = dict(cursor.fetchone())
+
+        audit_service.log_action(
+            "task",
+            task_id,
+            "create",
+            new_value={**task, "source": f"incident_{incident_id}"}
+        )
+
+        return {
+            "task": task,
+            "incident_id": incident_id,
+            "ai_generated": data.use_ai_suggestion,
+            "message": "Task created successfully"
+        }
