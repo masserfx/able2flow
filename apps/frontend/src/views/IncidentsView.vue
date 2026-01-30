@@ -13,6 +13,60 @@ const filter = ref<'all' | 'open' | 'resolved'>('all')
 const showNewForm = ref(false)
 const newIncident = ref({ title: '', severity: 'warning' })
 
+// AI Triage
+interface AIAnalysis {
+  ai_powered: boolean
+  model?: string
+  severity_suggestion: string
+  confidence: number
+  root_cause_hypothesis: string[]
+  recommended_actions: string[]
+  estimated_impact: string
+  runbook_suggestion?: string
+  analyzed_at: string
+}
+
+const analyzingIncidentId = ref<number | null>(null)
+const aiAnalysis = ref<AIAnalysis | null>(null)
+const showAIModal = ref(false)
+
+async function analyzeIncident(incident: Incident) {
+  analyzingIncidentId.value = incident.id
+  aiAnalysis.value = null
+  showAIModal.value = true
+
+  try {
+    const response = await fetch(`http://localhost:8000/api/ai/incidents/${incident.id}/analyze`, {
+      method: 'POST',
+    })
+    aiAnalysis.value = await response.json()
+  } catch (e) {
+    console.error('Failed to analyze incident:', e)
+    aiAnalysis.value = {
+      ai_powered: false,
+      severity_suggestion: 'unknown',
+      confidence: 0,
+      root_cause_hypothesis: ['Analysis failed'],
+      recommended_actions: ['Try again later'],
+      estimated_impact: 'Unknown',
+      analyzed_at: new Date().toISOString(),
+    }
+  } finally {
+    analyzingIncidentId.value = null
+  }
+}
+
+function closeAIModal() {
+  showAIModal.value = false
+  aiAnalysis.value = null
+}
+
+function getConfidenceColor(confidence: number) {
+  if (confidence >= 0.8) return '#9ece6a'
+  if (confidence >= 0.5) return '#e0af68'
+  return '#f7768e'
+}
+
 async function loadIncidents() {
   loading.value = true
   try {
@@ -200,16 +254,98 @@ onMounted(loadIncidents)
           </div>
         </div>
 
-        <div v-if="incident.status !== 'resolved'" class="incident-actions">
+        <div class="incident-actions">
           <button
-            v-if="incident.status === 'open'"
-            @click="acknowledgeIncident(incident)"
+            class="ai-btn"
+            @click="analyzeIncident(incident)"
+            :disabled="analyzingIncidentId === incident.id"
           >
-            {{ $t('incidents.acknowledge') }}
+            {{ analyzingIncidentId === incident.id ? '⏳ Analyzing...' : '🤖 AI Triage' }}
           </button>
-          <button class="success" @click="resolveIncident(incident)">
-            {{ $t('incidents.resolve') }}
-          </button>
+          <template v-if="incident.status !== 'resolved'">
+            <button
+              v-if="incident.status === 'open'"
+              @click="acknowledgeIncident(incident)"
+            >
+              {{ $t('incidents.acknowledge') }}
+            </button>
+            <button class="success" @click="resolveIncident(incident)">
+              {{ $t('incidents.resolve') }}
+            </button>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI Analysis Modal -->
+    <div v-if="showAIModal" class="modal-overlay" @click.self="closeAIModal">
+      <div class="modal ai-modal">
+        <div class="modal-header">
+          <h2>🤖 AI Triage Analysis</h2>
+          <button class="close-btn" @click="closeAIModal">✕</button>
+        </div>
+
+        <div v-if="!aiAnalysis" class="modal-loading">
+          <div class="spinner"></div>
+          <p>Claude is analyzing the incident...</p>
+        </div>
+
+        <div v-else class="ai-results">
+          <div class="ai-meta">
+            <span v-if="aiAnalysis.ai_powered" class="ai-badge powered">
+              ✨ AI Powered
+            </span>
+            <span v-else class="ai-badge fallback">
+              📋 Rule-based Fallback
+            </span>
+            <span v-if="aiAnalysis.model" class="ai-model">{{ aiAnalysis.model }}</span>
+          </div>
+
+          <div class="ai-section">
+            <h3>Severity Suggestion</h3>
+            <div class="severity-row">
+              <span :class="['badge', aiAnalysis.severity_suggestion]">
+                {{ aiAnalysis.severity_suggestion }}
+              </span>
+              <span class="confidence" :style="{ color: getConfidenceColor(aiAnalysis.confidence) }">
+                {{ Math.round(aiAnalysis.confidence * 100) }}% confidence
+              </span>
+            </div>
+          </div>
+
+          <div class="ai-section">
+            <h3>Root Cause Hypothesis</h3>
+            <ul class="hypothesis-list">
+              <li v-for="(cause, i) in aiAnalysis.root_cause_hypothesis" :key="i">
+                {{ cause }}
+              </li>
+            </ul>
+          </div>
+
+          <div class="ai-section">
+            <h3>Recommended Actions</h3>
+            <ol class="actions-list">
+              <li v-for="(action, i) in aiAnalysis.recommended_actions" :key="i">
+                {{ action }}
+              </li>
+            </ol>
+          </div>
+
+          <div class="ai-section">
+            <h3>Estimated Impact</h3>
+            <p class="impact-text">{{ aiAnalysis.estimated_impact }}</p>
+          </div>
+
+          <div v-if="aiAnalysis.runbook_suggestion" class="ai-section">
+            <h3>Suggested Runbook</h3>
+            <p class="runbook-text">📖 {{ aiAnalysis.runbook_suggestion }}</p>
+          </div>
+
+          <div class="ai-footer">
+            <span class="analyzed-at">
+              Analyzed: {{ new Date(aiAnalysis.analyzed_at).toLocaleString() }}
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -355,5 +491,184 @@ onMounted(loadIncidents)
 .incident-actions {
   display: flex;
   gap: 0.75rem;
+}
+
+.ai-btn {
+  background: linear-gradient(135deg, #bb9af7 0%, #7aa2f7 100%);
+  color: #1a1b26;
+  font-weight: 600;
+  border: none;
+}
+
+.ai-btn:hover {
+  opacity: 0.9;
+}
+
+.ai-btn:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+/* AI Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.ai-modal {
+  background: var(--bg-lighter);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 85vh;
+  overflow-y: auto;
+  border: 1px solid var(--border-color);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+  background: linear-gradient(135deg, rgba(187, 154, 247, 0.1) 0%, rgba(122, 162, 247, 0.1) 100%);
+}
+
+.modal-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.close-btn {
+  background: transparent;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 0.5rem;
+}
+
+.close-btn:hover {
+  color: var(--text-primary);
+}
+
+.modal-loading {
+  padding: 4rem;
+  text-align: center;
+}
+
+.spinner {
+  width: 48px;
+  height: 48px;
+  border: 3px solid var(--border-color);
+  border-top-color: var(--accent-purple);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin: 0 auto 1rem;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.ai-results {
+  padding: 1.5rem;
+}
+
+.ai-meta {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.ai-badge {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-weight: 600;
+}
+
+.ai-badge.powered {
+  background: rgba(187, 154, 247, 0.2);
+  color: #bb9af7;
+}
+
+.ai-badge.fallback {
+  background: rgba(224, 175, 104, 0.2);
+  color: #e0af68;
+}
+
+.ai-model {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ai-section {
+  margin-bottom: 1.5rem;
+}
+
+.ai-section h3 {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  margin: 0 0 0.75rem 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.severity-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.confidence {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.hypothesis-list,
+.actions-list {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.hypothesis-list li,
+.actions-list li {
+  margin-bottom: 0.5rem;
+  color: var(--text-secondary);
+}
+
+.impact-text,
+.runbook-text {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}
+
+.runbook-text {
+  background: var(--bg-dark);
+  padding: 0.75rem 1rem;
+  border-radius: 8px;
+}
+
+.ai-footer {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.analyzed-at {
+  font-size: 0.75rem;
+  color: var(--text-muted);
 }
 </style>
