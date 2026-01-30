@@ -13,9 +13,13 @@ class AITriageService:
     """Service for AI-powered incident analysis and recommendations."""
 
     def __init__(self):
-        self.api_key = os.getenv("ANTHROPIC_API_KEY")
         self.model = "claude-3-haiku-20240307"  # Fast & cheap for triage
         self.base_url = "https://api.anthropic.com/v1/messages"
+
+    @property
+    def api_key(self) -> str | None:
+        """Get API key at request time (not cached at init)."""
+        return os.getenv("ANTHROPIC_API_KEY")
 
     async def analyze_incident(self, incident_id: int) -> dict[str, Any]:
         """Analyze incident and provide AI recommendations.
