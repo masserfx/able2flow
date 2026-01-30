@@ -4,6 +4,16 @@
 
 Kombinace Trello-style kanban boardu s Betterstack-style monitoringem a incident managementem.
 
+## Landing Page
+
+Aplikace obsahuje interaktivní landing page (`/`) s kompletním přehledem funkcí:
+- **Hero sekce** - Rychlý přehled s mockupem aplikace
+- **Features** - Detailní popis všech funkcí
+- **Tech Stack** - Použité technologie (Frontend + Backend)
+- **AI Integration** - Ukázka AI-powered triage
+- **Extensions** - Plánované a aktivní integrace
+- **PDF Export** - Stažení popisu aplikace jako PDF (podpora češtiny s diakritikou)
+
 ## Features
 
 ### AI-Powered Incident Triage (Game Changer)
@@ -219,6 +229,7 @@ able2flow/
 │           │   ├── TaskModal.vue
 │           │   └── IntegrationCard.vue
 │           └── views/
+│               ├── LandingView.vue       # Landing page
 │               ├── DashboardView.vue
 │               ├── BoardView.vue
 │               ├── IntegrationsView.vue

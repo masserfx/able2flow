@@ -162,8 +162,9 @@ const filteredColumns = computed(() => {
 watch(projectId, (newProjectId) => {
   if (newProjectId) {
     const projectColumns = props.columns.filter(col => col.project_id === newProjectId)
-    if (projectColumns.length > 0 && !projectColumns.some(col => col.id === columnId.value)) {
-      columnId.value = projectColumns[0].id
+    const firstColumn = projectColumns[0]
+    if (firstColumn && !projectColumns.some(col => col.id === columnId.value)) {
+      columnId.value = firstColumn.id
     }
   }
 })
@@ -181,7 +182,7 @@ watch(() => props.show, (show) => {
 
       if (props.task.due_date) {
         const [date, time] = props.task.due_date.split('T')
-        dueDate.value = date
+        dueDate.value = date || ''
         dueTime.value = time?.slice(0, 5) || '09:00'
       } else {
         dueDate.value = ''

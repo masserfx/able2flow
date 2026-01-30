@@ -54,11 +54,6 @@ const displayColumns = computed(() => {
   return columns.value.filter(col => col.project_id === effectiveProjectId.value)
 })
 
-// Get project by ID
-function getProject(projectId: number | null): Project | undefined {
-  return projects.value.find(p => p.id === projectId)
-}
-
 async function loadProjects() {
   try {
     projects.value = await api.getProjects()
@@ -101,7 +96,10 @@ async function loadBoard() {
 
       // Set active project to first if not set
       if (!activeProjectId.value && projects.value.length > 0) {
-        activeProjectId.value = projects.value[0].id
+        const firstProject = projects.value[0]
+        if (firstProject) {
+          activeProjectId.value = firstProject.id
+        }
       }
     } else {
       // Load specific project
@@ -435,7 +433,7 @@ onMounted(async () => {
             <!-- Attachment previews -->
             <div v-if="getTaskAttachments(task.id).length > 0" class="task-attachments">
               <div class="attachments-preview">
-                <template v-for="(attachment, idx) in getTaskAttachments(task.id).slice(0, 3)" :key="attachment.id">
+                <template v-for="attachment in getTaskAttachments(task.id).slice(0, 3)" :key="attachment.id">
                   <!-- Image preview -->
                   <div v-if="isImageAttachment(attachment)" class="attachment-thumb image-thumb">
                     <img :src="getAttachmentUrl(attachment)" :alt="attachment.original_name" />

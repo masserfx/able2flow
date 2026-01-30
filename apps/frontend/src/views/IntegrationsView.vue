@@ -189,7 +189,7 @@ async function syncTasksToCalendar() {
   syncingTasks.value = true
   syncResult.value = null
   try {
-    const result = await syncAllTasksToCalendar()
+    const result = await syncAllTasksToCalendar() as { synced: number; updated: number; deleted: number; failed: number; total: number } | null
     syncResult.value = result
     // Reload events to show newly synced
     await loadCalendarEvents()

@@ -66,7 +66,8 @@
     "addTask": "Add Task",
     "loading": "Loading board...",
     "dropTasksHere": "Drop tasks here",
-    "deleteConfirm": "Delete \"{title}\"?"
+    "deleteConfirm": "Delete \"{title}\"?",
+    "selectProject": "Select a project to view"
   },
   "taskModal": {
     "createTitle": "New Task",

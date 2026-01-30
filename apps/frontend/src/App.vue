@@ -35,7 +35,7 @@ provide('currentProjectId', currentProjectId)
 onMounted(loadProjectFromStorage)
 
 const navItems = computed(() => [
-  { path: '/', name: t('nav.dashboard'), icon: '◉' },
+  { path: '/dashboard', name: t('nav.dashboard'), icon: '◉' },
   { path: '/board', name: t('nav.board'), icon: '▦' },
   { path: '/monitors', name: t('nav.monitors'), icon: '◎' },
   { path: '/incidents', name: t('nav.incidents'), icon: '⚡' },
@@ -44,15 +44,22 @@ const navItems = computed(() => [
 ])
 
 const currentPath = computed(() => route.path)
+const isLandingPage = computed(() => route.path === '/')
 </script>
 
 <template>
-  <div class="app-layout">
+  <!-- Landing page without sidebar -->
+  <div v-if="isLandingPage" class="landing-layout">
+    <router-view />
+  </div>
+
+  <!-- App layout with sidebar -->
+  <div v-else class="app-layout">
     <nav class="sidebar">
-      <div class="logo">
+      <router-link to="/" class="logo">
         <span class="logo-icon">◈</span>
         <span class="logo-text">Able2Flow</span>
-      </div>
+      </router-link>
       <ProjectSelector
         v-model="currentProjectId"
         @change="onProjectChange"
@@ -72,7 +79,7 @@ const currentPath = computed(() => route.path)
       <div class="sidebar-footer">
         <UserButton />
         <LanguageSwitcher />
-        <span class="version">v0.2.0</span>
+        <span class="version">v0.3.0</span>
       </div>
     </nav>
     <main class="main-content">
@@ -82,6 +89,10 @@ const currentPath = computed(() => route.path)
 </template>
 
 <style scoped>
+.landing-layout {
+  min-height: 100vh;
+}
+
 .app-layout {
   display: flex;
   min-height: 100vh;
@@ -102,6 +113,12 @@ const currentPath = computed(() => route.path)
   gap: 0.75rem;
   padding: 0 1.5rem;
   margin-bottom: 2rem;
+  text-decoration: none;
+  transition: opacity 0.2s;
+}
+
+.logo:hover {
+  opacity: 0.8;
 }
 
 .logo-icon {

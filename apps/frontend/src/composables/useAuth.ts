@@ -1,4 +1,4 @@
-import { ref, computed, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useAuth as useClerkAuth, useUser as useClerkUser, useSession } from '@clerk/vue'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api'
