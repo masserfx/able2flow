@@ -1,7 +1,7 @@
 [project]
-name = "flowable-backend"
+name = "able2flow-backend"
 version = "0.1.0"
-description = "Flowable MVP - Task management + Monitoring/Incident response"
+description = "Able2Flow MVP - Task management + Monitoring/Incident response"
 requires-python = ">=3.11"
 dependencies = [
     "fastapi>=0.115.0",

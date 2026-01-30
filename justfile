@@ -1,4 +1,4 @@
-# Flowable MVP - Task Management + Monitoring
+# Able2Flow MVP - Task Management + Monitoring
 set dotenv-load := true
 
 # List all recipes

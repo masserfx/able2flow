@@ -1,4 +1,4 @@
-# Flowable MVP
+# Able2Flow MVP
 
 **Task Management + Monitoring/Incident Response**
 
@@ -100,7 +100,7 @@ GET    /api/audit/stats        # Audit statistics
 ## Project Structure
 
 ```
-flowable/
+able2flow/
 ├── apps/
 │   ├── backend/
 │   │   ├── main.py              # FastAPI app

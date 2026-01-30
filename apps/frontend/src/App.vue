@@ -20,7 +20,7 @@ const currentPath = computed(() => route.path)
     <nav class="sidebar">
       <div class="logo">
         <span class="logo-icon">◈</span>
-        <span class="logo-text">Flowable</span>
+        <span class="logo-text">Able2Flow</span>
       </div>
       <ul class="nav-list">
         <li v-for="item in navItems" :key="item.path">

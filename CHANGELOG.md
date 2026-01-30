@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to Flowable MVP.
+All notable changes to Able2Flow MVP.
 
 ## [0.1.0] - 2026-01-30
 

@@ -1,4 +1,4 @@
-"""Flowable MVP - Task management + Monitoring/Incident response API."""
+"""Able2Flow MVP - Task management + Monitoring/Incident response API."""
 
 import asyncio
 from contextlib import asynccontextmanager
@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Flowable API",
+    title="Able2Flow API",
     description="Task management + Monitoring/Incident response MVP",
     version="0.1.0",
     lifespan=lifespan,
@@ -58,7 +58,7 @@ def root() -> dict:
     """Health check endpoint."""
     return {
         "status": "ok",
-        "message": "Flowable API is running",
+        "message": "Able2Flow API is running",
         "version": "0.1.0",
     }
 

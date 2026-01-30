@@ -1,4 +1,4 @@
-"""Pytest fixtures for Flowable backend tests."""
+"""Pytest fixtures for Able2Flow backend tests."""
 
 import os
 import sqlite3

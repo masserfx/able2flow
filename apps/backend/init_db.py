@@ -1,4 +1,4 @@
-"""Initialize the SQLite database with tables for Flowable MVP."""
+"""Initialize the SQLite database with tables for Able2Flow MVP."""
 
 import sqlite3
 from pathlib import Path
@@ -144,7 +144,7 @@ def init_database() -> None:
     if cursor.fetchone()[0] == 0:
         # Insert demo monitors
         demo_monitors = [
-            ("Flowable API", "http://localhost:8000/", 30),
+            ("Able2Flow API", "http://localhost:8000/", 30),
             ("Google", "https://www.google.com", 60),
             ("GitHub", "https://github.com", 60),
         ]

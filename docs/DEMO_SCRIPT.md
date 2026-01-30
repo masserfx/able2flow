@@ -1,4 +1,4 @@
-# Flowable MVP - Demo Script
+# Able2Flow MVP - Demo Script
 
 **Délka:** 5-7 minut
 
@@ -6,7 +6,7 @@
 
 ## Úvod (30s)
 
-> "Flowable je MVP kombinující task management ve stylu Trello s monitoringem a incident managementem podobným Betterstack. Vytvořeno za 5 hodin jako proof of concept."
+> "Able2Flow je MVP kombinující task management ve stylu Trello s monitoringem a incident managementem podobným Betterstack. Vytvořeno za 5 hodin jako proof of concept."
 
 **Ukázat:** Dashboard overview
 
@@ -139,7 +139,7 @@ curl http://localhost:8000/api/audit
 - Email notifikace
 - Integrace s externími službami
 
-> "Flowable MVP demonstruje, jak rychle lze vytvořit funkční aplikaci kombinující task management s DevOps monitoringem."
+> "Able2Flow MVP demonstruje, jak rychle lze vytvořit funkční aplikaci kombinující task management s DevOps monitoringem."
 
 ---
 

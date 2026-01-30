@@ -1,4 +1,4 @@
-"""Database utilities for Flowable."""
+"""Database utilities for Able2Flow."""
 
 import sqlite3
 from contextlib import contextmanager
