@@ -1,4 +1,4 @@
-Feature: Audit Log
+bFeature: Audit Log
   As an administrator
   I want to see all system changes
   So that I can audit actions and recover from mistakes

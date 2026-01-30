@@ -31,6 +31,20 @@ test:
 health:
   @curl -s http://localhost:8000/health | python3 -m json.tool || echo "API not running"
 
+# Generate token encryption key
+gen-token-key:
+  @cd apps/backend && uv run python -c "from cryptography.fernet import Fernet; print('TOKEN_ENCRYPTION_KEY=' + Fernet.generate_key().decode())"
+
+# Test integration endpoints
+test-integrations:
+  @echo "Testing integration endpoints..."
+  @echo "OAuth (should return 401):"
+  @curl -s -w " [%{http_code}]\n" http://localhost:8000/api/integrations/oauth/me
+  @echo "Slack help command:"
+  @curl -s -X POST http://localhost:8000/api/integrations/slack/commands \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "command=/able2flow&text=help&user_id=test&channel_id=test&response_url=http://test"
+
 # Get dashboard summary
 dashboard:
   @curl -s http://localhost:8000/api/dashboard | python3 -m json.tool || echo "API not running"

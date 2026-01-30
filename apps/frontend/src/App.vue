@@ -4,6 +4,7 @@ import { useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
 import ProjectSelector from './components/ProjectSelector.vue'
+import UserButton from './components/UserButton.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -39,6 +40,7 @@ const navItems = computed(() => [
   { path: '/monitors', name: t('nav.monitors'), icon: '◎' },
   { path: '/incidents', name: t('nav.incidents'), icon: '⚡' },
   { path: '/audit', name: t('nav.auditLog'), icon: '☰' },
+  { path: '/settings/integrations', name: t('integrations.title'), icon: '⚙' },
 ])
 
 const currentPath = computed(() => route.path)
@@ -68,8 +70,9 @@ const currentPath = computed(() => route.path)
         </li>
       </ul>
       <div class="sidebar-footer">
+        <UserButton />
         <LanguageSwitcher />
-        <span class="version">v0.1.0</span>
+        <span class="version">v0.2.0</span>
       </div>
     </nav>
     <main class="main-content">

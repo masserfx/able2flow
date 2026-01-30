@@ -26,6 +26,11 @@ const routes = [
     name: 'audit',
     component: () => import('../views/AuditView.vue'),
   },
+  {
+    path: '/settings/integrations',
+    name: 'integrations',
+    component: () => import('../views/IntegrationsView.vue'),
+  },
 ]
 
 const router = createRouter({

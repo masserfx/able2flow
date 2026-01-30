@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@clerk/vue": "^1.17.11",
     "@vueuse/core": "^12.0.0",
     "vue": "^3.5.24",
     "vue-i18n": "^9.14.5",

@@ -66,7 +66,45 @@
     "addTask": "Přidat úkol",
     "loading": "Načítám nástěnku...",
     "dropTasksHere": "Přetáhněte úkoly sem",
-    "deleteConfirm": "Smazat \"{title}\"?"
+    "deleteConfirm": "Smazat \"{title}\"?",
+    "selectProject": "Vyberte projekt pro zobrazení"
+  },
+  "taskModal": {
+    "createTitle": "Nový úkol",
+    "editTitle": "Upravit úkol",
+    "name": "Název",
+    "namePlaceholder": "Zadejte název úkolu",
+    "description": "Popis",
+    "descriptionPlaceholder": "Volitelný popis úkolu",
+    "project": "Projekt",
+    "column": "Sloupec",
+    "priority": "Priorita",
+    "priorityLow": "Nízká",
+    "priorityMedium": "Střední",
+    "priorityHigh": "Vysoká",
+    "priorityCritical": "Kritická",
+    "deadline": "Termín (deadline)",
+    "date": "Datum",
+    "time": "Čas",
+    "useTimeRange": "Použít časový rozsah (od-do)",
+    "timeRange": "Časový rozsah",
+    "startDate": "Datum začátku",
+    "startTime": "Čas začátku",
+    "endDate": "Datum konce",
+    "endTime": "Čas konce",
+    "cancel": "Zrušit",
+    "save": "Uložit",
+    "create": "Vytvořit",
+    "newProject": "Nový projekt",
+    "projectNamePlaceholder": "Název projektu",
+    "createProject": "Vytvořit projekt",
+    "creating": "Vytvářím...",
+    "attachments": "Přílohy",
+    "addAttachment": "+ Přidat soubor",
+    "uploading": "Nahrávám...",
+    "download": "Stáhnout",
+    "noAttachments": "Žádné přílohy",
+    "deleteAttachmentConfirm": "Smazat \"{name}\"?"
   },
   "monitors": {
     "title": "Monitory",
@@ -142,5 +180,23 @@
     "acknowledgedIncident": "Potvrzen incident #{id}",
     "resolvedIncident": "Vyřešen incident #{id}",
     "updated": "Aktualizováno {changes} na #{id}"
+  },
+  "integrations": {
+    "title": "Integrace",
+    "description": "Připojte své oblíbené nástroje pro vylepšení workflow",
+    "signInRequired": "Vyžadováno přihlášení",
+    "signInDescription": "Pro správu integrací se prosím přihlaste",
+    "calendar": {
+      "description": "Synchronizace úkolů s Google Kalendářem"
+    },
+    "docs": {
+      "description": "Propojení Google Docs s úkoly"
+    },
+    "gmail": {
+      "description": "Vytváření úkolů z emailů, odesílání notifikací"
+    },
+    "slack": {
+      "description": "Získejte notifikace ve Slack kanálech"
+    }
   }
 }

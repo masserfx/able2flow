@@ -11,6 +11,62 @@ def init_database() -> None:
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
 
+    # Create users table (for Clerk integration)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            id TEXT PRIMARY KEY,
+            email TEXT,
+            name TEXT,
+            avatar_url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    # Create OAuth tokens table (encrypted)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS user_oauth_tokens (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            access_token TEXT NOT NULL,
+            refresh_token TEXT,
+            scopes TEXT,
+            expires_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            UNIQUE(user_id, provider)
+        )
+    """)
+
+    # Create integration settings table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS integration_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id TEXT NOT NULL,
+            project_id INTEGER,
+            integration_type TEXT NOT NULL,
+            settings TEXT,
+            enabled INTEGER DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id),
+            FOREIGN KEY (project_id) REFERENCES projects(id)
+        )
+    """)
+
+    # Create linked documents table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS linked_documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            provider TEXT NOT NULL,
+            external_id TEXT NOT NULL,
+            title TEXT,
+            url TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES tasks(id)
+        )
+    """)
+
     # Create projects table
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS projects (
@@ -48,6 +104,7 @@ def init_database() -> None:
             priority TEXT DEFAULT 'medium',
             due_date TEXT,
             project_id INTEGER DEFAULT 1,
+            google_event_id TEXT,
             created_at TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (column_id) REFERENCES columns(id),
             FOREIGN KEY (project_id) REFERENCES projects(id)
@@ -109,6 +166,20 @@ def init_database() -> None:
             is_up INTEGER DEFAULT 1,
             timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (monitor_id) REFERENCES monitors(id)
+        )
+    """)
+
+    # Create attachments table for task files
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS attachments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            task_id INTEGER NOT NULL,
+            filename TEXT NOT NULL,
+            original_name TEXT NOT NULL,
+            file_type TEXT NOT NULL,
+            file_size INTEGER NOT NULL,
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE
         )
     """)
 
@@ -194,6 +265,13 @@ def init_database() -> None:
             demo_monitors,
         )
         print(f"Inserted {len(demo_monitors)} demo monitors")
+
+    # Migration: Add google_event_id column if it doesn't exist
+    try:
+        cursor.execute("ALTER TABLE tasks ADD COLUMN google_event_id TEXT")
+        print("Added google_event_id column to tasks table")
+    except sqlite3.OperationalError:
+        pass  # Column already exists
 
     conn.commit()
     conn.close()

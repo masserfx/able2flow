@@ -16,6 +16,7 @@ export interface Task {
   description: string | null
   completed: boolean
   column_id: number | null
+  project_id: number | null
   position: number
   priority: string
   due_date: string | null
@@ -25,9 +26,20 @@ export interface Task {
 export interface Column {
   id: number
   board_id: number
+  project_id: number | null
   name: string
   position: number
   color: string
+  created_at: string
+}
+
+export interface Attachment {
+  id: number
+  task_id: number
+  filename: string
+  original_name: string
+  file_type: string
+  file_size: number
   created_at: string
 }
 
@@ -203,6 +215,41 @@ export function useApi() {
   const getDashboard = (projectId?: number) =>
     fetchJson<DashboardData>('/dashboard' + buildQuery({ project_id: projectId }))
 
+  // Attachments
+  const getAttachments = (taskId: number) => fetchJson<Attachment[]>(`/attachments/task/${taskId}`)
+
+  const uploadAttachment = async (taskId: number, file: File): Promise<Attachment> => {
+    loading.value = true
+    error.value = null
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const response = await fetch(`${API_URL}/attachments/task/${taskId}`, {
+        method: 'POST',
+        body: formData,
+      })
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.detail || `HTTP error ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (e) {
+      error.value = e instanceof Error ? e.message : 'Upload failed'
+      throw e
+    } finally {
+      loading.value = false
+    }
+  }
+
+  const deleteAttachment = (attachmentId: number) =>
+    fetchJson<{ message: string }>(`/attachments/${attachmentId}`, { method: 'DELETE' })
+
+  const getAttachmentDownloadUrl = (attachmentId: number) =>
+    `${API_URL}/attachments/${attachmentId}/download`
+
   return {
     loading,
     error,
@@ -237,5 +284,10 @@ export function useApi() {
     getAuditLogs,
     // Dashboard
     getDashboard,
+    // Attachments
+    getAttachments,
+    uploadAttachment,
+    deleteAttachment,
+    getAttachmentDownloadUrl,
   }
 }

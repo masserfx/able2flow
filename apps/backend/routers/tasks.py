@@ -40,6 +40,7 @@ class Task(BaseModel):
     description: str | None
     completed: bool
     column_id: int | None
+    project_id: int | None
     position: int
     priority: str
     due_date: str | None
@@ -54,6 +55,7 @@ def row_to_task(row) -> dict:
         "description": row["description"],
         "completed": bool(row["completed"]),
         "column_id": row["column_id"],
+        "project_id": row["project_id"],
         "position": row["position"] or 0,
         "priority": row["priority"] or "medium",
         "due_date": row["due_date"],
@@ -103,6 +105,21 @@ def get_task(task_id: int) -> dict:
 def create_task(task: TaskCreate) -> dict:
     """Create a new task."""
     with get_db() as conn:
+        # Determine project_id from column if not provided
+        project_id = task.project_id
+        if project_id is None and task.column_id is not None:
+            cursor = conn.execute(
+                "SELECT project_id FROM columns WHERE id = ?",
+                (task.column_id,),
+            )
+            col_row = cursor.fetchone()
+            if col_row:
+                project_id = col_row["project_id"]
+
+        # Default to project 1 if still None
+        if project_id is None:
+            project_id = 1
+
         # Get max position in column
         position = task.position
         if position is None and task.column_id is not None:
@@ -115,10 +132,10 @@ def create_task(task: TaskCreate) -> dict:
 
         cursor = conn.execute(
             """
-            INSERT INTO tasks (title, description, column_id, position, priority, due_date)
-            VALUES (?, ?, ?, ?, ?, ?)
+            INSERT INTO tasks (title, description, column_id, project_id, position, priority, due_date)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (task.title, task.description, task.column_id, position or 0, task.priority, task.due_date),
+            (task.title, task.description, task.column_id, project_id, position or 0, task.priority, task.due_date),
         )
         conn.commit()
         task_id = cursor.lastrowid

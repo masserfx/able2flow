@@ -3,10 +3,14 @@
 import asyncio
 from contextlib import asynccontextmanager
 
+from dotenv import load_dotenv
+load_dotenv()  # Load .env file
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import tasks, columns, monitors, incidents, audit, dashboard, ai, sla, events, projects
+from routers import tasks, columns, monitors, incidents, audit, dashboard, ai, sla, events, projects, attachments
+from routers.integrations import calendar_router, docs_router, gmail_router, slack_router, oauth_router
 from services.monitor_service import monitor_service
 
 
@@ -55,6 +59,14 @@ app.include_router(ai.router)
 app.include_router(sla.router)
 app.include_router(events.router)
 app.include_router(projects.router)
+app.include_router(attachments.router)
+
+# Integration routers
+app.include_router(oauth_router)
+app.include_router(calendar_router)
+app.include_router(docs_router)
+app.include_router(gmail_router)
+app.include_router(slack_router)
 
 
 @app.get("/")

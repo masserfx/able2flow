@@ -94,3 +94,6 @@ app_docs/maintenance*
 
 # Backups
 backups/
+
+# Uploads (user files)
+apps/backend/uploads/

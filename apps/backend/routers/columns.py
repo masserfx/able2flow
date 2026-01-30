@@ -26,6 +26,7 @@ class ColumnUpdate(BaseModel):
 class Column(BaseModel):
     id: int
     board_id: int
+    project_id: int | None
     name: str
     position: int
     color: str
@@ -37,6 +38,7 @@ def row_to_column(row) -> dict:
     return {
         "id": row["id"],
         "board_id": row["board_id"],
+        "project_id": row["project_id"],
         "name": row["name"],
         "position": row["position"],
         "color": row["color"],
@@ -45,18 +47,18 @@ def row_to_column(row) -> dict:
 
 
 @router.get("", response_model=list[Column])
-def list_columns(board_id: int = 1, project_id: int | None = None) -> list[dict]:
-    """Get all columns for a board, optionally filtered by project."""
+def list_columns(project_id: int | None = None) -> list[dict]:
+    """Get all columns, optionally filtered by project."""
     with get_db() as conn:
         if project_id is not None:
             cursor = conn.execute(
-                "SELECT * FROM columns WHERE board_id = ? AND project_id = ? ORDER BY position",
-                (board_id, project_id),
+                "SELECT * FROM columns WHERE project_id = ? ORDER BY position",
+                (project_id,),
             )
         else:
+            # Return columns for default project (1) if no project specified
             cursor = conn.execute(
-                "SELECT * FROM columns WHERE board_id = ? ORDER BY position",
-                (board_id,),
+                "SELECT * FROM columns WHERE project_id = 1 ORDER BY position"
             )
         return [row_to_column(row) for row in cursor.fetchall()]
 
@@ -77,20 +79,22 @@ def create_column(column: ColumnCreate) -> dict:
     """Create a new column."""
     with get_db() as conn:
         position = column.position
+        project_id = column.project_id or 1
+
         if position is None:
             cursor = conn.execute(
-                "SELECT MAX(position) as max_pos FROM columns WHERE board_id = ?",
-                (column.board_id,),
+                "SELECT MAX(position) as max_pos FROM columns WHERE project_id = ?",
+                (project_id,),
             )
             row = cursor.fetchone()
             position = (row["max_pos"] or 0) + 1
 
         cursor = conn.execute(
             """
-            INSERT INTO columns (board_id, name, position, color)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO columns (board_id, name, position, color, project_id)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (column.board_id, column.name, position, column.color),
+            (column.board_id, column.name, position, column.color, project_id),
         )
         conn.commit()
         column_id = cursor.lastrowid

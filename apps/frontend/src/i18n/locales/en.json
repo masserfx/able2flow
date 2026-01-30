@@ -68,6 +68,43 @@
     "dropTasksHere": "Drop tasks here",
     "deleteConfirm": "Delete \"{title}\"?"
   },
+  "taskModal": {
+    "createTitle": "New Task",
+    "editTitle": "Edit Task",
+    "name": "Title",
+    "namePlaceholder": "Enter task title",
+    "description": "Description",
+    "descriptionPlaceholder": "Optional task description",
+    "project": "Project",
+    "column": "Column",
+    "priority": "Priority",
+    "priorityLow": "Low",
+    "priorityMedium": "Medium",
+    "priorityHigh": "High",
+    "priorityCritical": "Critical",
+    "deadline": "Deadline",
+    "date": "Date",
+    "time": "Time",
+    "useTimeRange": "Use time range (start-end)",
+    "timeRange": "Time Range",
+    "startDate": "Start Date",
+    "startTime": "Start Time",
+    "endDate": "End Date",
+    "endTime": "End Time",
+    "cancel": "Cancel",
+    "save": "Save",
+    "create": "Create",
+    "newProject": "New Project",
+    "projectNamePlaceholder": "Project name",
+    "createProject": "Create Project",
+    "creating": "Creating...",
+    "attachments": "Attachments",
+    "addAttachment": "+ Add File",
+    "uploading": "Uploading...",
+    "download": "Download",
+    "noAttachments": "No attachments",
+    "deleteAttachmentConfirm": "Delete \"{name}\"?"
+  },
   "monitors": {
     "title": "Monitors",
     "newMonitor": "New Monitor",
@@ -142,5 +179,23 @@
     "acknowledgedIncident": "Acknowledged incident #{id}",
     "resolvedIncident": "Resolved incident #{id}",
     "updated": "Updated {changes} on #{id}"
+  },
+  "integrations": {
+    "title": "Integrations",
+    "description": "Connect your favorite tools to enhance your workflow",
+    "signInRequired": "Sign in Required",
+    "signInDescription": "Please sign in to manage your integrations",
+    "calendar": {
+      "description": "Sync tasks with Google Calendar"
+    },
+    "docs": {
+      "description": "Link Google Docs to tasks"
+    },
+    "gmail": {
+      "description": "Create tasks from emails, send notifications"
+    },
+    "slack": {
+      "description": "Get notifications in Slack channels"
+    }
   }
 }
