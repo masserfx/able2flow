@@ -1,6 +1,62 @@
 # Changelog
 
-All notable changes to Able2Flow MVP.
+All notable changes to Able2Flow.
+
+## [0.2.0] - 2026-01-30
+
+### Added
+
+#### AI-Powered Incident Triage
+- **Claude API Integration**: Automatic incident analysis using Anthropic Claude
+- **Root Cause Hypothesis**: AI generates possible causes based on context
+- **Runbook Suggestions**: Automatic step-by-step remediation guides
+- **Auto-Triage**: Confidence-based automatic severity updates
+- **Fallback Analysis**: Rule-based analysis when API unavailable
+- New endpoints:
+  - `POST /api/ai/incidents/{id}/analyze`
+  - `POST /api/ai/incidents/{id}/auto-triage`
+  - `GET /api/ai/incidents/{id}/runbook`
+
+#### SLA Tracking & Reporting
+- **Uptime Monitoring**: Track against 99.9% SLA target
+- **Response Time Percentiles**: p50, p95, p99 calculations
+- **MTTA Tracking**: Mean Time To Acknowledge (15min target)
+- **MTTR Tracking**: Mean Time To Recovery (4h target)
+- **Health Score**: Combined 0-100 system health metric
+- **SLA Reports**: Comprehensive compliance reporting
+- New endpoints:
+  - `GET /api/sla/report`
+  - `GET /api/sla/health-score`
+  - `GET /api/sla/monitors/{id}/uptime`
+  - `GET /api/sla/monitors/{id}/response-times`
+  - `GET /api/sla/incidents/mtta`
+  - `GET /api/sla/incidents/mttr`
+
+#### Event Sourcing & Time Travel
+- **Entity History**: Complete change history for all entities
+- **Time Travel**: Reconstruct entity state at any timestamp
+- **Event Replay**: Step through changes incrementally
+- **State Diff**: Compare entity between two points in time
+- **Disaster Recovery**: Restore entities to previous state
+- **Activity Feed**: Real-time feed across all entities
+- New endpoints:
+  - `GET /api/events/feed`
+  - `GET /api/events/{type}/{id}/history`
+  - `GET /api/events/{type}/{id}/state-at`
+  - `GET /api/events/{type}/{id}/replay`
+  - `GET /api/events/{type}/{id}/diff`
+  - `POST /api/events/{type}/{id}/restore`
+
+#### Testing
+- 11 new tests for advanced features
+- Total test count: 27 (all passing)
+
+### Changed
+- Project renamed from Flowable to Able2Flow
+- API version bumped to 0.2.0
+- Enhanced API description
+
+---
 
 ## [0.1.0] - 2026-01-30
 

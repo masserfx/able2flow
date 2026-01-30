@@ -6,6 +6,24 @@ Kombinace Trello-style kanban boardu s Betterstack-style monitoringem a incident
 
 ## Features
 
+### AI-Powered Incident Triage (Game Changer)
+- **Auto-analysis** - Claude API analyzes incidents and suggests severity
+- **Root cause hypothesis** - AI identifies possible causes
+- **Runbook suggestions** - Automatic remediation steps
+- **Confidence scoring** - AI indicates certainty of analysis
+
+### SLA Tracking & Reporting
+- **Uptime monitoring** - Track 99.9% SLA targets
+- **Response time percentiles** - p50, p95, p99 tracking
+- **MTTA/MTTR metrics** - Mean time to acknowledge/recover
+- **Health score** - Single 0-100 score for system health
+
+### Event Sourcing & Time Travel
+- **Complete history** - Every change is recorded
+- **Time travel** - Reconstruct state at any point
+- **Event replay** - Step through changes
+- **Disaster recovery** - Restore entities to previous state
+
 ### Task Management
 - **Kanban Board** - Drag & drop mezi sloupci (Backlog, To Do, In Progress, Done)
 - **Priority levels** - High, Medium, Low s barevným rozlišením
@@ -95,6 +113,31 @@ POST   /api/incidents/{id}/resolve     # Resolve
 GET    /api/dashboard          # Dashboard summary
 GET    /api/audit              # Audit log
 GET    /api/audit/stats        # Audit statistics
+```
+
+### AI Triage
+```
+POST   /api/ai/incidents/{id}/analyze    # AI analysis
+GET    /api/ai/incidents/{id}/runbook    # Suggested runbook
+POST   /api/ai/incidents/{id}/auto-triage # Full auto-triage
+```
+
+### SLA Reporting
+```
+GET    /api/sla/report                   # Full SLA report
+GET    /api/sla/health-score             # System health 0-100
+GET    /api/sla/monitors/{id}/uptime     # Monitor uptime
+GET    /api/sla/incidents/mtta           # Mean Time To Acknowledge
+GET    /api/sla/incidents/mttr           # Mean Time To Recovery
+```
+
+### Event Sourcing
+```
+GET    /api/events/feed                  # Activity feed
+GET    /api/events/{type}/{id}/history   # Entity history
+GET    /api/events/{type}/{id}/state-at  # Time travel
+GET    /api/events/{type}/{id}/replay    # Event replay
+POST   /api/events/{type}/{id}/restore   # Restore entity
 ```
 
 ## Project Structure
