@@ -1,7 +1,12 @@
 {
   "projects": {
     "selectProject": "Select Project",
-    "allProjects": "All Projects"
+    "allProjects": "All Projects",
+    "newProject": "New Project",
+    "projectName": "Project name",
+    "create": "Create",
+    "delete": "Delete",
+    "deleteConfirm": "Delete project \"{name}\"? All associated tasks, monitors, and incidents will be removed."
   },
   "common": {
     "refresh": "Refresh",

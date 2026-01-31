@@ -99,20 +99,23 @@ const isLandingPage = computed(() => route.path === '/')
 }
 
 .sidebar {
-  width: 240px;
+  width: 220px;
+  min-width: 220px;
   background-color: var(--bg-darker);
   border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
-  padding: 1.5rem 0;
+  padding: 1rem 0;
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0 1.5rem;
-  margin-bottom: 2rem;
+  padding: 0 1rem;
+  margin-bottom: 1.5rem;
   text-decoration: none;
   transition: opacity 0.2s;
 }
@@ -127,7 +130,7 @@ const isLandingPage = computed(() => route.path === '/')
 }
 
 .logo-text {
-  font-size: 1.25rem;
+  font-size: 1.125rem;
   font-weight: 600;
   color: var(--text-primary);
 }
@@ -143,7 +146,7 @@ const isLandingPage = computed(() => route.path === '/')
   display: flex;
   align-items: center;
   gap: 0.75rem;
-  padding: 0.75rem 1.5rem;
+  padding: 0.625rem 1rem;
   color: var(--text-secondary);
   text-decoration: none;
   transition: all 0.2s;
@@ -163,32 +166,135 @@ const isLandingPage = computed(() => route.path === '/')
 
 .nav-icon {
   font-size: 1rem;
-  width: 1.5rem;
+  width: 1.25rem;
   text-align: center;
+  flex-shrink: 0;
 }
 
 .nav-text {
-  font-size: 0.875rem;
+  font-size: 0.8rem;
   font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .sidebar-footer {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-  padding: 0 1.5rem;
+  gap: 0.5rem;
+  padding: 0 1rem;
   margin-top: auto;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border-color);
 }
 
 .version {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
 }
 
 .main-content {
   flex: 1;
-  padding: 2rem;
+  padding: 1.5rem;
   overflow-y: auto;
   background-color: var(--bg-dark);
+  min-width: 0;
+}
+
+/* Responsive styles */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    flex-direction: row;
+    flex-wrap: wrap;
+    padding: 0.5rem;
+    border-right: none;
+    border-bottom: 1px solid var(--border-color);
+    overflow-x: auto;
+    gap: 0.5rem;
+  }
+
+  .logo {
+    margin-bottom: 0;
+    padding: 0.5rem;
+  }
+
+  .logo-text {
+    display: none;
+  }
+
+  .nav-list {
+    display: flex;
+    gap: 0.25rem;
+    flex: 1;
+    overflow-x: auto;
+  }
+
+  .nav-link {
+    padding: 0.5rem 0.75rem;
+    border-left: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 6px;
+  }
+
+  .nav-link.active {
+    border-left-color: transparent;
+    border-bottom-color: var(--accent-blue);
+  }
+
+  .nav-text {
+    display: none;
+  }
+
+  .nav-icon {
+    font-size: 1.25rem;
+    width: auto;
+  }
+
+  .sidebar-footer {
+    flex-direction: row;
+    padding: 0;
+    margin-top: 0;
+    border-top: none;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .version {
+    display: none;
+  }
+
+  .main-content {
+    padding: 1rem;
+  }
+}
+
+/* Project selector on mobile */
+@media (max-width: 768px) {
+  .sidebar :deep(.project-selector) {
+    order: -1;
+    margin-bottom: 0;
+    padding: 0;
+  }
+
+  .sidebar :deep(.project-selector .selector-label),
+  .sidebar :deep(.project-selector .new-form),
+  .sidebar :deep(.project-selector .delete-confirm) {
+    display: none;
+  }
+
+  .sidebar :deep(.project-selector .selector-header) {
+    margin-bottom: 0;
+  }
+
+  .sidebar :deep(.project-selector .selector-wrapper) {
+    padding: 0.375rem 0.5rem;
+  }
 }
 </style>

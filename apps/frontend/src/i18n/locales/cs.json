@@ -1,7 +1,12 @@
 {
   "projects": {
     "selectProject": "Vybrat projekt",
-    "allProjects": "Všechny projekty"
+    "allProjects": "Všechny projekty",
+    "newProject": "Nový projekt",
+    "projectName": "Název projektu",
+    "create": "Vytvořit",
+    "delete": "Smazat",
+    "deleteConfirm": "Smazat projekt \"{name}\"? Všechny přidružené úkoly, monitory a incidenty budou odstraněny."
   },
   "common": {
     "refresh": "Obnovit",

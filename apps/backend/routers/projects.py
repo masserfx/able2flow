@@ -139,7 +139,7 @@ def update_project(project_id: int, project: ProjectUpdate) -> dict:
 
 @router.delete("/{project_id}")
 def delete_project(project_id: int) -> dict:
-    """Delete a project and all related data (columns, tasks)."""
+    """Delete a project and all related data (columns, tasks, monitors, incidents)."""
     with get_db() as conn:
         cursor = conn.execute("SELECT * FROM projects WHERE id = ?", (project_id,))
         existing = cursor.fetchone()
@@ -148,7 +148,16 @@ def delete_project(project_id: int) -> dict:
 
         old_value = row_to_project(existing)
 
-        # Cascade delete: tasks -> columns -> project
+        # Get monitor IDs for this project (to delete related metrics/incidents)
+        cursor = conn.execute("SELECT id FROM monitors WHERE project_id = ?", (project_id,))
+        monitor_ids = [row["id"] for row in cursor.fetchall()]
+
+        # Cascade delete all related data
+        for monitor_id in monitor_ids:
+            conn.execute("DELETE FROM metrics WHERE monitor_id = ?", (monitor_id,))
+            conn.execute("DELETE FROM incidents WHERE monitor_id = ?", (monitor_id,))
+
+        conn.execute("DELETE FROM monitors WHERE project_id = ?", (project_id,))
         conn.execute("DELETE FROM tasks WHERE project_id = ?", (project_id,))
         conn.execute("DELETE FROM columns WHERE project_id = ?", (project_id,))
         conn.execute("DELETE FROM projects WHERE id = ?", (project_id,))

@@ -30,7 +30,12 @@ watch(currentProjectId, loadMonitors)
 async function createMonitor() {
   if (!newMonitor.value.name || !newMonitor.value.url) return
   try {
-    await api.createMonitor(newMonitor.value)
+    // Include current project_id when creating monitor
+    const monitorData = {
+      ...newMonitor.value,
+      project_id: currentProjectId.value,
+    }
+    await api.createMonitor(monitorData)
     newMonitor.value = { name: '', url: '', check_interval: 60 }
     showNewForm.value = false
     await loadMonitors()

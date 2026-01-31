@@ -30,6 +30,7 @@ class Monitor(BaseModel):
     check_interval: int
     last_status: str
     last_check: str | None
+    project_id: int | None
     created_at: str
 
 
@@ -42,6 +43,7 @@ def row_to_monitor(row) -> dict:
         "check_interval": row["check_interval"],
         "last_status": row["last_status"],
         "last_check": row["last_check"],
+        "project_id": row["project_id"],
         "created_at": row["created_at"],
     }
 
@@ -77,10 +79,10 @@ def create_monitor(monitor: MonitorCreate) -> dict:
     with get_db() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO monitors (name, url, check_interval)
-            VALUES (?, ?, ?)
+            INSERT INTO monitors (name, url, check_interval, project_id)
+            VALUES (?, ?, ?, ?)
             """,
-            (monitor.name, monitor.url, monitor.check_interval),
+            (monitor.name, monitor.url, monitor.check_interval, monitor.project_id),
         )
         conn.commit()
         monitor_id = cursor.lastrowid

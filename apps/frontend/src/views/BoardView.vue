@@ -788,4 +788,197 @@ onMounted(async () => {
   color: var(--text-muted);
   font-weight: 600;
 }
+
+/* Responsive styles */
+@media (max-width: 1024px) {
+  .kanban-column {
+    flex: 0 0 260px;
+  }
+
+  .column-tasks {
+    padding: 0.75rem;
+  }
+
+  .task-card {
+    padding: 0.625rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .board-view {
+    height: auto;
+    min-height: calc(100vh - 8rem);
+  }
+
+  .page-header {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.25rem;
+    flex: 1;
+  }
+
+  .page-header .primary {
+    font-size: 0.8rem;
+    padding: 0.5rem 0.75rem;
+  }
+
+  /* Project tabs - horizontal scroll */
+  .project-tabs {
+    padding: 0.375rem;
+    gap: 0.375rem;
+    margin-bottom: 0.75rem;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .project-tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .tab-indicator {
+    width: 6px;
+    height: 6px;
+  }
+
+  .tab-count {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.375rem;
+  }
+
+  /* Kanban board - horizontal scroll with snap */
+  .kanban-board {
+    gap: 0.75rem;
+    padding-bottom: 0.5rem;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .kanban-column {
+    flex: 0 0 85vw;
+    max-width: 320px;
+    scroll-snap-align: start;
+    max-height: calc(100vh - 14rem);
+  }
+
+  .column-header {
+    padding: 0.75rem;
+  }
+
+  .column-name {
+    font-size: 0.9rem;
+  }
+
+  .column-tasks {
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .task-card {
+    padding: 0.5rem;
+  }
+
+  .task-title {
+    font-size: 0.8rem;
+  }
+
+  .task-description {
+    font-size: 0.7rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .task-footer {
+    margin-top: 0.5rem;
+  }
+
+  .task-due {
+    font-size: 0.7rem;
+  }
+
+  .task-delete {
+    opacity: 1;
+    padding: 0.375rem;
+  }
+
+  .empty-column {
+    min-height: 80px;
+    font-size: 0.8rem;
+  }
+
+  /* Attachments - smaller on mobile */
+  .task-attachments {
+    margin-top: 0.5rem;
+    padding-top: 0.5rem;
+  }
+
+  .attachment-thumb {
+    width: 36px;
+    height: 36px;
+  }
+
+  .attachment-more {
+    width: 36px;
+    height: 36px;
+    font-size: 0.7rem;
+  }
+
+  .file-icon {
+    font-size: 1rem;
+  }
+
+  .file-ext {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .kanban-column {
+    flex: 0 0 90vw;
+  }
+
+  .project-tab {
+    padding: 0.375rem 0.625rem;
+    font-size: 0.75rem;
+  }
+
+  .tab-count {
+    display: none;
+  }
+
+  .task-attachment-badge {
+    font-size: 0.65rem;
+  }
+
+  .task-attachments {
+    display: none;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .task-card {
+    cursor: default;
+  }
+
+  .task-delete {
+    opacity: 1;
+  }
+
+  .task-card:active {
+    transform: scale(0.98);
+    border-color: var(--accent-blue);
+  }
+
+  /* Larger touch targets */
+  .task-header input[type="checkbox"] {
+    width: 20px;
+    height: 20px;
+  }
+}
 </style>

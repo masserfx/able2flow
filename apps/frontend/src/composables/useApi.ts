@@ -50,6 +50,7 @@ export interface Monitor {
   check_interval: number
   last_status: string
   last_check: string | null
+  project_id: number | null
   created_at: string
 }
 
