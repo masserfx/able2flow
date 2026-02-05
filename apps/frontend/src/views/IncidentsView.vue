@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, computed, inject, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useApi, type Incident } from '../composables/useApi'
+import { useApi, type Incident, type IncidentTemplate } from '../composables/useApi'
+import AppIcon from '../components/AppIcon.vue'
 
 const { t, locale } = useI18n()
 const api = useApi()
@@ -11,7 +12,9 @@ const loading = ref(true)
 const filter = ref<'all' | 'open' | 'resolved'>('all')
 
 const showNewForm = ref(false)
-const newIncident = ref({ title: '', severity: 'warning' })
+const templates = ref<IncidentTemplate[]>([])
+const selectedTemplate = ref<string>('')
+const newIncident = ref({ title: '', severity: 'warning', description: '' })
 
 // AI Triage
 interface AIAnalysis {
@@ -213,11 +216,38 @@ const emptyHintText = computed(() => {
   return t('incidents.noResolvedIncidents')
 })
 
+
+async function loadTemplates() {
+  try {
+    templates.value = await api.getIncidentTemplates()
+  } catch (e) {
+    console.error('Failed to load templates:', e)
+  }
+}
+
+function applyTemplate(templateId: string) {
+  if (!templateId) {
+    // Reset form for custom incident
+    newIncident.value = { title: '', severity: 'warning', description: '' }
+    return
+  }
+
+  const template = templates.value.find(t => t.id === templateId)
+  if (template) {
+    newIncident.value = {
+      title: template.title,
+      severity: template.severity as 'warning' | 'critical',
+      description: template.description
+    }
+  }
+}
+
 async function createIncident() {
   if (!newIncident.value.title) return
   try {
     await api.createIncident(newIncident.value)
-    newIncident.value = { title: '', severity: 'warning' }
+    newIncident.value = { title: '', severity: 'warning', description: '' }
+    selectedTemplate.value = ''
     showNewForm.value = false
     await loadIncidents()
   } catch (e) {
@@ -280,7 +310,10 @@ function getDuration(startedAt: string, resolvedAt: string | null) {
   return `${minutes}m`
 }
 
-onMounted(loadIncidents)
+onMounted(async () => {
+  await loadIncidents()
+  await loadTemplates()
+})
 </script>
 
 <template>
@@ -310,24 +343,52 @@ onMounted(loadIncidents)
 
     <!-- New Incident Form -->
     <div v-if="showNewForm" class="new-form card">
-      <div class="form-row">
+      <!-- Template Selector -->
+      <div class="form-group">
+        <label>{{ $t('incidents.template') }}</label>
+        <select v-model="selectedTemplate" @change="applyTemplate(selectedTemplate)">
+          <option value="">{{ $t('incidents.customIncident') }}</option>
+          <option v-for="tpl in templates" :key="tpl.id" :value="tpl.id">
+            {{ tpl.name }}
+          </option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>{{ $t('incidents.title') }}</label>
         <input
           v-model="newIncident.title"
           type="text"
           :placeholder="$t('incidents.incidentDescriptionPlaceholder')"
         />
-        <select v-model="newIncident.severity">
-          <option value="warning">{{ $t('incidents.warning') }}</option>
-          <option value="critical">{{ $t('incidents.critical') }}</option>
-        </select>
-        <button class="primary" @click="createIncident">{{ $t('incidents.report') }}</button>
       </div>
+
+      <div class="form-row">
+        <div class="form-group half">
+          <label>{{ $t('incidents.severity') }}</label>
+          <select v-model="newIncident.severity">
+            <option value="warning">{{ $t('incidents.warning') }}</option>
+            <option value="critical">{{ $t('incidents.critical') }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>{{ $t('incidents.description') }}</label>
+        <textarea
+          v-model="newIncident.description"
+          :placeholder="$t('incidents.descriptionPlaceholder')"
+          rows="3"
+        />
+      </div>
+
+      <button class="primary" @click="createIncident">{{ $t('incidents.report') }}</button>
     </div>
 
     <div v-if="loading" class="loading">{{ $t('incidents.loading') }}</div>
 
     <div v-else-if="filteredIncidents.length === 0" class="empty-state card">
-      <div class="empty-icon">✓</div>
+      <AppIcon name="check-circle" :size="48" class="empty-icon" />
       <div class="empty-text">{{ $t('incidents.noIncidents') }}</div>
       <div class="empty-hint">
         {{ emptyHintText }}
@@ -354,6 +415,7 @@ onMounted(loadIncidents)
         </div>
 
         <h3 class="incident-title">{{ incident.title }}</h3>
+        <p v-if="incident.description" class="incident-description">{{ incident.description }}</p>
 
         <div class="incident-timeline">
           <div class="timeline-item">
@@ -376,13 +438,14 @@ onMounted(loadIncidents)
             @click="analyzeIncident(incident)"
             :disabled="analyzingIncidentId === incident.id"
           >
-            {{ analyzingIncidentId === incident.id ? '⏳ Analyzing...' : '🤖 AI Triage' }}
+            <AppIcon :name="analyzingIncidentId === incident.id ? 'clock' : 'robot'" :size="16" />
+            {{ analyzingIncidentId === incident.id ? 'Analyzing...' : 'AI Triage' }}
           </button>
           <button
             class="task-btn"
             @click="openCreateTaskModal(incident)"
           >
-            📋 {{ locale === 'cs' ? 'Vytvořit Task' : 'Create Task' }}
+            <AppIcon name="clipboard" :size="16" /> {{ locale === 'cs' ? 'Vytvořit Task' : 'Create Task' }}
           </button>
           <template v-if="incident.status !== 'resolved'">
             <button
@@ -403,7 +466,7 @@ onMounted(loadIncidents)
     <div v-if="showAIModal" class="modal-overlay" @click.self="closeAIModal">
       <div class="modal ai-modal">
         <div class="modal-header">
-          <h2>🤖 AI Triage Analysis</h2>
+          <h2><AppIcon name="robot" :size="22" /> AI Triage Analysis</h2>
           <button class="close-btn" @click="closeAIModal">✕</button>
         </div>
 
@@ -418,7 +481,7 @@ onMounted(loadIncidents)
               ✨ AI Powered
             </span>
             <span v-else class="ai-badge fallback">
-              📋 Rule-based Fallback
+              <AppIcon name="clipboard" :size="14" /> Rule-based Fallback
             </span>
             <span v-if="aiAnalysis.model" class="ai-model">{{ aiAnalysis.model }}</span>
           </div>
@@ -460,7 +523,7 @@ onMounted(loadIncidents)
 
           <div v-if="aiAnalysis.runbook_suggestion" class="ai-section">
             <h3>Suggested Runbook</h3>
-            <p class="runbook-text">📖 {{ aiAnalysis.runbook_suggestion }}</p>
+            <p class="runbook-text"><AppIcon name="book" :size="16" /> {{ aiAnalysis.runbook_suggestion }}</p>
           </div>
 
           <div class="ai-footer">
@@ -476,7 +539,7 @@ onMounted(loadIncidents)
     <div v-if="showCreateTaskModal" class="modal-overlay" @click.self="closeCreateTaskModal">
       <div class="modal task-modal">
         <div class="modal-header task-header">
-          <h2>📋 {{ locale === 'cs' ? 'Vytvořit Task z Incidentu' : 'Create Task from Incident' }}</h2>
+          <h2><AppIcon name="clipboard" :size="20" /> {{ locale === 'cs' ? 'Vytvořit Task z Incidentu' : 'Create Task from Incident' }}</h2>
           <button class="close-btn" @click="closeCreateTaskModal">✕</button>
         </div>
 
@@ -936,4 +999,50 @@ onMounted(loadIncidents)
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);
 }
+
+.form-group {
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem;
+  background: var(--bg-lighter);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.9375rem;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+}
+
+.form-group.half {
+  flex: 1;
+}
+
+.incident-description {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin-top: 0.5rem;
+  margin-bottom: 0.75rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+
 </style>

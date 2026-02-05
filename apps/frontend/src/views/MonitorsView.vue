@@ -2,6 +2,7 @@
 import { ref, onMounted, inject, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type Monitor } from '../composables/useApi'
+import AppIcon from '../components/AppIcon.vue'
 
 const { t } = useI18n()
 const api = useApi()
@@ -116,7 +117,7 @@ onMounted(loadMonitors)
     <div v-if="loading" class="loading">{{ $t('monitors.loading') }}</div>
 
     <div v-else-if="monitors.length === 0" class="empty-state card">
-      <div class="empty-icon">◎</div>
+      <AppIcon name="monitor" :size="48" class="empty-icon" />
       <div class="empty-text">{{ $t('monitors.noMonitorsConfigured') }}</div>
       <div class="empty-hint">{{ $t('monitors.addMonitorHint') }}</div>
     </div>

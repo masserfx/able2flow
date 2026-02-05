@@ -31,9 +31,12 @@
   "nav": {
     "dashboard": "Dashboard",
     "board": "Board",
+    "marketplace": "Marketplace",
+    "leaderboard": "Leaderboard",
     "monitors": "Monitors",
     "incidents": "Incidents",
-    "auditLog": "Audit Log"
+    "auditLog": "Audit Log",
+    "guide": "Guide"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -72,7 +75,16 @@
     "loading": "Loading board...",
     "dropTasksHere": "Drop tasks here",
     "deleteConfirm": "Delete \"{title}\"?",
-    "selectProject": "Select a project to view"
+    "selectProject": "Select a project to view",
+    "contextMenu": {
+      "duplicate": "Duplicate",
+      "move": "Move to...",
+      "convertToIncident": "Convert to Incident",
+      "changePriority": "Change Priority",
+      "archive": "Archive",
+      "unarchive": "Unarchive",
+      "delete": "Delete"
+    }
   },
   "taskModal": {
     "createTitle": "New Task",
@@ -109,7 +121,12 @@
     "uploading": "Uploading...",
     "download": "Download",
     "noAttachments": "No attachments",
-    "deleteAttachmentConfirm": "Delete \"{name}\"?"
+    "deleteAttachmentConfirm": "Delete \"{name}\"?",
+    "estimateMinutes": "Estimated time (minutes)",
+    "points": "Points",
+    "assignedTo": "Assigned to",
+    "assignedSince": "Since",
+    "claimedFromMarketplace": "Claimed from Marketplace"
   },
   "monitors": {
     "title": "Monitors",
@@ -157,7 +174,11 @@
     "resolve": "Resolve",
     "statusOpen": "open",
     "statusAcknowledged": "acknowledged",
-    "statusResolved": "resolved"
+    "statusResolved": "resolved",
+    "template": "Template (optional)",
+    "customIncident": "Custom incident",
+    "description": "Description",
+    "descriptionPlaceholder": "Incident description and details..."
   },
   "audit": {
     "title": "Audit Log",
@@ -203,5 +224,48 @@
     "slack": {
       "description": "Get notifications in Slack channels"
     }
+  },
+  "marketplace": {
+    "title": "Task Marketplace",
+    "subtitle": "Claim tasks and earn points",
+    "byPoints": "By Points",
+    "newest": "Newest",
+    "noTasks": "No tasks available",
+    "noTasksDesc": "Check back later for new tasks",
+    "points": "pts",
+    "claim": "Claim Task",
+    "claiming": "Claiming...",
+    "claimError": "Failed to claim task. Please try again."
+  },
+  "leaderboard": {
+    "title": "Leaderboard",
+    "subtitle": "Top performers and rankings",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "allTime": "All Time",
+    "yourRank": "Your Rank",
+    "totalPoints": "Total Points",
+    "tasksCompleted": "Tasks",
+    "bonusPoints": "Bonus",
+    "points": "Points",
+    "bonus": "Bonus",
+    "tasks": "Tasks",
+    "total": "Total",
+    "noData": "No leaderboard data",
+    "noDataDesc": "Complete tasks to appear on the leaderboard"
+  },
+  "timeTracking": {
+    "start": "Start Timer",
+    "stop": "Stop",
+    "estimate": "Estimated",
+    "spent": "Time Spent",
+    "startError": "Failed to start time tracking",
+    "stopError": "Failed to stop time tracking"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark all read",
+    "noNotifications": "No notifications yet"
   }
 }

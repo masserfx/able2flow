@@ -3,6 +3,9 @@ import { ref, computed, onMounted, inject, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type Task, type Column, type Project, type Attachment } from '../composables/useApi'
 import TaskModal, { type TaskFormData, type NewProjectData } from '../components/TaskModal.vue'
+import PointsBadge from '../components/PointsBadge.vue'
+import AppIcon from '../components/AppIcon.vue'
+import { useContextMenu } from '../composables/useContextMenu'
 
 const { t, te } = useI18n()
 const currentProjectId = inject<Ref<number | null>>('currentProjectId', ref(null))
@@ -187,14 +190,11 @@ function getAttachmentUrl(attachment: Attachment): string {
 // Get file icon for non-image files
 function getFileIcon(fileType: string): string {
   const type = fileType.toLowerCase()
-  if (['.pdf'].includes(type)) return '📄'
-  if (['.doc', '.docx'].includes(type)) return '📝'
-  if (['.xls', '.xlsx'].includes(type)) return '📊'
-  if (['.ppt', '.pptx'].includes(type)) return '📽️'
-  if (['.zip', '.rar', '.7z', '.tar', '.gz'].includes(type)) return '📦'
-  if (['.txt', '.md'].includes(type)) return '📃'
-  if (['.json', '.csv'].includes(type)) return '📋'
-  return '📎'
+  if (['.pdf', '.doc', '.docx'].includes(type)) return 'file-text'
+  if (['.xls', '.xlsx'].includes(type)) return 'file-spreadsheet'
+  if (['.zip', '.rar', '.7z', '.tar', '.gz'].includes(type)) return 'file-archive'
+  if (['.txt', '.md', '.json', '.csv'].includes(type)) return 'file-text'
+  return 'paperclip'
 }
 
 async function handleTaskSave(data: TaskFormData) {
@@ -335,6 +335,128 @@ async function openEditTaskModal(task: Task) {
   showTaskModal.value = true
 }
 
+// Context Menu
+const contextMenu = useContextMenu()
+
+function showContextMenu(event: MouseEvent, task: Task) {
+  const menuItems = [
+    {
+      label: t('board.contextMenu.duplicate'),
+      icon: 'clipboard',
+      action: async () => {
+        try {
+          await api.duplicateTask(task.id)
+          await loadBoard()
+          contextMenu.hide()
+        } catch (e) {
+          console.error('Failed to duplicate task:', e)
+        }
+      }
+    },
+    {
+      label: t('board.contextMenu.move'),
+      icon: 'folder',
+      action: () => {
+        // Show column submenu
+        showColumnSubmenu(event, task)
+      }
+    },
+    {
+      label: t('board.contextMenu.convertToIncident'),
+      icon: 'zap',
+      action: async () => {
+        try {
+          // Create incident from task
+          await api.createIncident({
+            title: task.title,
+            description: task.description || `Converted from task: ${task.title}`,
+            severity: 'medium',
+            status: 'open',
+            project_id: task.project_id
+          })
+          contextMenu.hide()
+        } catch (e) {
+          console.error('Failed to convert to incident:', e)
+        }
+      }
+    },
+    {
+      label: t('board.contextMenu.changePriority'),
+      icon: 'priority-high',
+      action: async () => {
+        try {
+          // Cycle through priorities: low -> medium -> high -> critical -> low
+          const priorities = ['low', 'medium', 'high', 'critical']
+          const currentIndex = priorities.indexOf(task.priority)
+          const nextPriority = priorities[(currentIndex + 1) % priorities.length]
+
+          await api.updateTask(task.id, { priority: nextPriority })
+          await loadBoard()
+          contextMenu.hide()
+        } catch (e) {
+          console.error('Failed to change priority:', e)
+        }
+      }
+    },
+    {
+      divider: true,
+      label: '',
+      action: () => {}
+    },
+    {
+      label: task.archived ? t('board.contextMenu.unarchive') : t('board.contextMenu.archive'),
+      icon: 'file-archive',
+      action: async () => {
+        try {
+          await api.archiveTask(task.id)
+          await loadBoard()
+          contextMenu.hide()
+        } catch (e) {
+          console.error('Failed to archive task:', e)
+        }
+      }
+    },
+    {
+      label: t('board.contextMenu.delete'),
+      icon: 'trash',
+      danger: true,
+      action: async () => {
+        if (!confirm(t('board.deleteConfirm', { title: task.title }))) {
+          contextMenu.hide()
+          return
+        }
+        try {
+          await api.deleteTask(task.id)
+          await loadBoard()
+          contextMenu.hide()
+        } catch (e) {
+          console.error('Failed to delete task:', e)
+        }
+      }
+    }
+  ]
+
+  contextMenu.show(event, menuItems)
+}
+
+function showColumnSubmenu(event: MouseEvent, task: Task) {
+  const columnMenuItems = displayColumns.value.map(column => ({
+    label: translateColumn(column.name),
+    icon: 'folder',
+    action: async () => {
+      try {
+        await api.moveTask(task.id, column.id, 0)
+        await loadBoard()
+        contextMenu.hide()
+      } catch (e) {
+        console.error('Failed to move task:', e)
+      }
+    }
+  }))
+
+  contextMenu.show(event, columnMenuItems)
+}
+
 onMounted(async () => {
   await loadProjects()
   await loadBoard()
@@ -407,6 +529,7 @@ onMounted(async () => {
             @dragend="onDragEnd"
             @dragover.prevent
             @drop.stop="onDrop(column.id, index)"
+            @contextmenu.prevent="showContextMenu($event, task)"
           >
             <div class="task-header">
               <input
@@ -415,8 +538,12 @@ onMounted(async () => {
                 @change="toggleTaskComplete(task)"
               />
               <span :class="['task-priority', getPriorityClass(task.priority)]">●</span>
+              <PointsBadge :points="task.points" size="small" variant="minimal" />
               <span v-if="getTaskAttachments(task.id).length > 0" class="task-attachment-badge">
-                📎 {{ getTaskAttachments(task.id).length }}
+                <AppIcon name="paperclip" :size="12" /> {{ getTaskAttachments(task.id).length }}
+              </span>
+              <span v-if="task.assigned_to" class="task-assigned-badge" :title="`Assigned to ${task.assigned_to}`">
+                <AppIcon name="user" :size="12" />
               </span>
             </div>
             <div class="task-title" @click="openEditTaskModal(task)">{{ task.title }}</div>
@@ -440,7 +567,7 @@ onMounted(async () => {
                   </div>
                   <!-- File icon preview -->
                   <div v-else class="attachment-thumb file-thumb">
-                    <span class="file-icon">{{ getFileIcon(attachment.file_type) }}</span>
+                    <AppIcon :name="getFileIcon(attachment.file_type)" :size="16" class="file-icon" />
                     <span class="file-ext">{{ attachment.file_type }}</span>
                   </div>
                 </template>
@@ -464,6 +591,32 @@ onMounted(async () => {
         </div>
       </div>
     </div>
+
+    <!-- Context Menu -->
+    <Teleport to="body">
+      <div
+        v-if="contextMenu.isVisible.value"
+        class="context-menu"
+        :style="{
+          left: contextMenu.x.value + 'px',
+          top: contextMenu.y.value + 'px'
+        }"
+        @click.stop
+      >
+        <template v-for="(item, index) in contextMenu.items.value" :key="index">
+          <div v-if="item.divider" class="context-divider" />
+          <div
+            v-else
+            class="context-item"
+            :class="{ danger: item.danger }"
+            @click="item.action"
+          >
+            <AppIcon v-if="item.icon" :name="item.icon" :size="16" class="context-icon" />
+            <span class="context-label">{{ item.label }}</span>
+          </div>
+        </template>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -653,6 +806,12 @@ onMounted(async () => {
   background: var(--bg-lighter);
   padding: 0.125rem 0.375rem;
   border-radius: 4px;
+}
+
+.task-assigned-badge {
+  font-size: 0.7rem;
+  margin-left: auto;
+  opacity: 0.7;
 }
 
 .task-title {
@@ -980,5 +1139,65 @@ onMounted(async () => {
     width: 20px;
     height: 20px;
   }
+}
+
+/* Context Menu - Tokyo Night Theme */
+.context-menu {
+  position: fixed;
+  background: #1a1b26;
+  border: 1px solid #414868;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(122, 162, 247, 0.1);
+  min-width: 200px;
+  padding: 4px;
+  z-index: 1000;
+  backdrop-filter: blur(8px);
+}
+
+.context-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  color: #c0caf5;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.context-item:hover {
+  background: #24283b;
+  color: #7aa2f7;
+}
+
+.context-item.danger {
+  color: #f7768e;
+}
+
+.context-item.danger:hover {
+  background: rgba(247, 118, 142, 0.15);
+  color: #f7768e;
+}
+
+.context-icon {
+  font-size: 1rem;
+  width: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.context-label {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.context-divider {
+  height: 1px;
+  background: #414868;
+  margin: 4px 8px;
 }
 </style>

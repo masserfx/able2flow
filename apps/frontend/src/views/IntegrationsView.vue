@@ -5,6 +5,7 @@ import { SignedIn, SignedOut, SignInButton, useAuth as useClerkAuth, useUser } f
 import { useAuth } from '../composables/useAuth'
 import { useIntegrations } from '../composables/useIntegrations'
 import IntegrationCard from '../components/IntegrationCard.vue'
+import AppIcon from '../components/AppIcon.vue'
 
 const { t } = useI18n()
 const { isSignedIn } = useClerkAuth()
@@ -71,7 +72,7 @@ const availableIntegrations = computed(() => [
   {
     name: 'Google Calendar',
     description: t('integrations.calendar.description'),
-    icon: '📅',
+    icon: 'calendar',
     provider: 'google',
     type: 'calendar',
     connected: isGoogleConnected.value && hasCalendarScopes.value,
@@ -81,7 +82,7 @@ const availableIntegrations = computed(() => [
   {
     name: 'Google Docs',
     description: t('integrations.docs.description'),
-    icon: '📄',
+    icon: 'file-text',
     provider: 'google',
     type: 'docs',
     connected: isGoogleConnected.value && hasCalendarScopes.value,
@@ -91,7 +92,7 @@ const availableIntegrations = computed(() => [
   {
     name: 'Gmail',
     description: t('integrations.gmail.description'),
-    icon: '✉️',
+    icon: 'mail',
     provider: 'google',
     type: 'gmail',
     connected: isGoogleConnected.value && hasCalendarScopes.value,
@@ -101,7 +102,7 @@ const availableIntegrations = computed(() => [
   {
     name: 'Slack',
     description: t('integrations.slack.description'),
-    icon: '💬',
+    icon: 'message',
     provider: 'slack',
     type: 'slack',
     connected: connectedProviders.value.includes('slack'),
@@ -269,7 +270,7 @@ onMounted(loadData)
 
     <SignedOut>
       <div class="auth-notice">
-        <div class="notice-icon">🔐</div>
+        <AppIcon name="settings" :size="48" class="notice-icon" />
         <div class="notice-content">
           <h3>{{ t('integrations.signInRequired') }}</h3>
           <p>{{ t('integrations.signInDescription') }}</p>
@@ -371,7 +372,7 @@ onMounted(loadData)
             :key="event.id"
             class="event-item"
           >
-            <div class="event-icon">📅</div>
+            <AppIcon name="calendar" :size="20" class="event-icon" />
             <div class="event-content">
               <div class="event-title">{{ event.summary || '(No title)' }}</div>
               <div class="event-time">{{ formatEventDate(event) }}</div>

@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type AuditLog } from '../composables/useApi'
+import AppIcon from '../components/AppIcon.vue'
 
 const { t } = useI18n()
 const api = useApi()
@@ -58,18 +59,13 @@ function getEntityText(entityType: string) {
   }
 }
 
-function getEntityIcon(entityType: string) {
+function getEntityIconName(entityType: string) {
   switch (entityType) {
-    case 'task':
-      return '☑'
-    case 'column':
-      return '▦'
-    case 'monitor':
-      return '◎'
-    case 'incident':
-      return '⚡'
-    default:
-      return '•'
+    case 'task': return 'check-circle'
+    case 'column': return 'board'
+    case 'monitor': return 'monitor'
+    case 'incident': return 'zap'
+    default: return 'file'
   }
 }
 
@@ -153,7 +149,7 @@ onMounted(loadLogs)
     </div>
 
     <div v-else-if="logs.length === 0" class="empty-state card">
-      <div class="empty-icon">☰</div>
+      <AppIcon name="list" :size="48" class="empty-icon" />
       <div class="empty-text">{{ $t('audit.noActivity') }}</div>
       <div class="empty-hint">{{ $t('audit.actionsWillAppear') }}</div>
     </div>
@@ -165,7 +161,7 @@ onMounted(loadLogs)
         class="audit-entry"
       >
         <div class="entry-icon" :style="{ color: getActionColor(log.action) }">
-          {{ getEntityIcon(log.entity_type) }}
+          <AppIcon :name="getEntityIconName(log.entity_type)" :size="18" />
         </div>
         <div class="entry-content">
           <div class="entry-header">

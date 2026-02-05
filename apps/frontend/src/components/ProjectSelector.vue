@@ -2,6 +2,7 @@
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type Project } from '../composables/useApi'
+import AppIcon from './AppIcon.vue'
 
 const { t } = useI18n()
 const api = useApi()
@@ -31,6 +32,11 @@ async function loadProjects() {
   loading.value = true
   try {
     projects.value = await api.getProjects()
+    // Reset to null if stored project doesn't exist in DB
+    if (props.modelValue !== null && !projects.value.find(p => p.id === props.modelValue)) {
+      emit('update:modelValue', null)
+      emit('change', null)
+    }
   } catch (e) {
     console.error('Failed to load projects:', e)
   } finally {
@@ -102,7 +108,7 @@ onMounted(loadProjects)
           @click="showDeleteConfirm = true"
           :title="t('projects.delete')"
         >
-          🗑
+          <AppIcon name="trash" :size="14" />
         </button>
       </div>
     </div>

@@ -2,6 +2,7 @@
 import { ref, onMounted, computed, inject, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type DashboardData, type Incident } from '../composables/useApi'
+import AppIcon from '../components/AppIcon.vue'
 
 const { t, te } = useI18n()
 const api = useApi()
@@ -60,7 +61,7 @@ onMounted(loadDashboard)
       <!-- Stats Grid -->
       <div class="stats-grid">
         <div class="stat-card">
-          <div class="stat-icon" style="color: var(--accent-blue)">☑</div>
+          <AppIcon name="check-circle" :size="32" class="stat-icon" style="color: var(--accent-blue)" />
           <div class="stat-content">
             <div class="stat-value">{{ dashboard.tasks.completed }} / {{ dashboard.tasks.total }}</div>
             <div class="stat-label">{{ $t('dashboard.tasksCompleted') }}</div>
@@ -74,7 +75,7 @@ onMounted(loadDashboard)
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon" style="color: var(--accent-green)">◎</div>
+          <AppIcon name="monitor" :size="32" class="stat-icon" style="color: var(--accent-green)" />
           <div class="stat-content">
             <div class="stat-value" :style="{ color: uptimeColor }">
               {{ dashboard.monitoring.uptime_24h }}%
@@ -90,7 +91,7 @@ onMounted(loadDashboard)
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon" :style="{ color: dashboard.monitoring.open_incidents > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }">⚡</div>
+          <AppIcon name="zap" :size="32" class="stat-icon" :style="{ color: dashboard.monitoring.open_incidents > 0 ? 'var(--accent-red)' : 'var(--accent-green)' }" />
           <div class="stat-content">
             <div class="stat-value">{{ dashboard.monitoring.open_incidents }}</div>
             <div class="stat-label">{{ $t('dashboard.openIncidents') }}</div>
@@ -98,7 +99,7 @@ onMounted(loadDashboard)
         </div>
 
         <div class="stat-card">
-          <div class="stat-icon" style="color: var(--accent-magenta)">☰</div>
+          <AppIcon name="list" :size="32" class="stat-icon" style="color: var(--accent-magenta)" />
           <div class="stat-content">
             <div class="stat-value">{{ dashboard.activity.recent_24h }}</div>
             <div class="stat-label">{{ $t('dashboard.actions24h') }}</div>
@@ -127,7 +128,7 @@ onMounted(loadDashboard)
         <div class="card">
           <h3>{{ $t('dashboard.openIncidentsTitle') }}</h3>
           <div v-if="openIncidents.length === 0" class="empty-state">
-            <span class="empty-icon">✓</span>
+            <AppIcon name="check-circle" :size="20" class="empty-icon" />
             <span>{{ $t('dashboard.allSystemsOperational') }}</span>
           </div>
           <ul v-else class="incident-list">

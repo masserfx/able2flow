@@ -5,6 +5,9 @@ import { useI18n } from 'vue-i18n'
 import LanguageSwitcher from './components/LanguageSwitcher.vue'
 import ProjectSelector from './components/ProjectSelector.vue'
 import UserButton from './components/UserButton.vue'
+import NotificationBell from './components/NotificationBell.vue'
+import ToastContainer from './components/ToastContainer.vue'
+import AppIcon from './components/AppIcon.vue'
 
 const { t } = useI18n()
 const route = useRoute()
@@ -35,12 +38,15 @@ provide('currentProjectId', currentProjectId)
 onMounted(loadProjectFromStorage)
 
 const navItems = computed(() => [
-  { path: '/dashboard', name: t('nav.dashboard'), icon: '◉' },
-  { path: '/board', name: t('nav.board'), icon: '▦' },
-  { path: '/monitors', name: t('nav.monitors'), icon: '◎' },
-  { path: '/incidents', name: t('nav.incidents'), icon: '⚡' },
-  { path: '/audit', name: t('nav.auditLog'), icon: '☰' },
-  { path: '/settings/integrations', name: t('integrations.title'), icon: '⚙' },
+  { path: '/dashboard', name: t('nav.dashboard'), icon: 'dashboard' },
+  { path: '/board', name: t('nav.board'), icon: 'board' },
+  { path: '/marketplace', name: t('nav.marketplace'), icon: 'target' },
+  { path: '/leaderboard', name: t('nav.leaderboard'), icon: 'trophy' },
+  { path: '/monitors', name: t('nav.monitors'), icon: 'monitor' },
+  { path: '/incidents', name: t('nav.incidents'), icon: 'zap' },
+  { path: '/audit', name: t('nav.auditLog'), icon: 'list' },
+  { path: '/guide', name: t('nav.guide'), icon: 'book' },
+  { path: '/settings/integrations', name: t('integrations.title'), icon: 'settings' },
 ])
 
 const currentPath = computed(() => route.path)
@@ -48,6 +54,9 @@ const isLandingPage = computed(() => route.path === '/')
 </script>
 
 <template>
+  <!-- Toast Container -->
+  <ToastContainer />
+
   <!-- Landing page without sidebar -->
   <div v-if="isLandingPage" class="landing-layout">
     <router-view />
@@ -57,7 +66,7 @@ const isLandingPage = computed(() => route.path === '/')
   <div v-else class="app-layout">
     <nav class="sidebar">
       <router-link to="/" class="logo">
-        <span class="logo-icon">◈</span>
+        <AppIcon name="logo" :size="24" class="logo-icon" />
         <span class="logo-text">Able2Flow</span>
       </router-link>
       <ProjectSelector
@@ -71,12 +80,13 @@ const isLandingPage = computed(() => route.path === '/')
             class="nav-link"
             :class="{ active: currentPath === item.path }"
           >
-            <span class="nav-icon">{{ item.icon }}</span>
+            <AppIcon :name="item.icon" :size="18" class="nav-icon" />
             <span class="nav-text">{{ item.name }}</span>
           </router-link>
         </li>
       </ul>
       <div class="sidebar-footer">
+        <NotificationBell />
         <UserButton />
         <LanguageSwitcher />
         <span class="version">v0.3.0</span>
@@ -125,7 +135,6 @@ const isLandingPage = computed(() => route.path === '/')
 }
 
 .logo-icon {
-  font-size: 1.5rem;
   color: var(--accent-blue);
 }
 
@@ -165,9 +174,7 @@ const isLandingPage = computed(() => route.path === '/')
 }
 
 .nav-icon {
-  font-size: 1rem;
   width: 1.25rem;
-  text-align: center;
   flex-shrink: 0;
 }
 
@@ -253,8 +260,7 @@ const isLandingPage = computed(() => route.path === '/')
   }
 
   .nav-icon {
-    font-size: 1.25rem;
-    width: auto;
+    width: 22px;
   }
 
   .sidebar-footer {

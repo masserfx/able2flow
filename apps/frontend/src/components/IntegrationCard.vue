@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import AppIcon from './AppIcon.vue'
 
 interface Props {
   name: string
@@ -55,7 +56,7 @@ function handleAction() {
   <div class="integration-card" :class="{ connected, 'needs-scopes': needsScopes }">
     <div class="card-header">
       <div class="icon-wrapper">
-        <span class="icon">{{ icon }}</span>
+        <AppIcon :name="icon" :size="28" class="icon" />
       </div>
       <div class="card-info">
         <h3 class="card-title">{{ name }}</h3>

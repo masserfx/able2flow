@@ -2,6 +2,9 @@
 import { ref, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type Task, type Column, type Project, type Attachment } from '../composables/useApi'
+import TimeTracker from './TimeTracker.vue'
+import PointsBadge from './PointsBadge.vue'
+import AppIcon from './AppIcon.vue'
 
 const { t, te } = useI18n()
 const api = useApi()
@@ -29,6 +32,7 @@ export interface TaskFormData {
   due_date: string | null
   start_date: string | null
   end_date: string | null
+  estimated_minutes?: number | null
 }
 
 export interface NewProjectData {
@@ -42,6 +46,9 @@ const description = ref('')
 const projectId = ref<number | null>(null)
 const columnId = ref<number | null>(null)
 const priority = ref('medium')
+
+// ANT HILL fields
+const estimatedMinutes = ref<number | null>(null)
 
 // New project form
 const showNewProjectForm = ref(false)
@@ -124,13 +131,11 @@ function formatFileSize(bytes: number): string {
 
 function getFileIcon(fileType: string): string {
   const type = fileType.toLowerCase()
-  if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(type)) return '🖼️'
-  if (['.pdf'].includes(type)) return '📄'
-  if (['.doc', '.docx'].includes(type)) return '📝'
-  if (['.xls', '.xlsx'].includes(type)) return '📊'
-  if (['.ppt', '.pptx'].includes(type)) return '📽️'
-  if (['.zip', '.rar', '.7z', '.tar', '.gz'].includes(type)) return '📦'
-  return '📎'
+  if (['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'].includes(type)) return 'file-image'
+  if (['.pdf', '.doc', '.docx'].includes(type)) return 'file-text'
+  if (['.xls', '.xlsx'].includes(type)) return 'file-spreadsheet'
+  if (['.zip', '.rar', '.7z', '.tar', '.gz'].includes(type)) return 'file-archive'
+  return 'paperclip'
 }
 const dueDate = ref('')
 const dueTime = ref('')
@@ -179,6 +184,7 @@ watch(() => props.show, (show) => {
       projectId.value = props.task.project_id
       columnId.value = props.task.column_id
       priority.value = props.task.priority || 'medium'
+      estimatedMinutes.value = props.task.estimated_minutes
 
       if (props.task.due_date) {
         const [date, time] = props.task.due_date.split('T')
@@ -212,9 +218,33 @@ watch(() => props.show, (show) => {
       endDate.value = ''
       endTime.value = '10:00'
       useTimeRange.value = false
+      estimatedMinutes.value = null
     }
   }
 })
+
+// Calculate points from estimated minutes (1 point = 10 minutes)
+const calculatedPoints = computed(() => {
+  if (!estimatedMinutes.value) return 0
+  return Math.max(1, Math.ceil(estimatedMinutes.value / 10))
+})
+
+// Format time spent (seconds to readable format)
+function formatTimeSpent(seconds: number | null): string {
+  if (!seconds) return '0m'
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  if (hours > 0) return `${hours}h ${minutes}m`
+  return `${minutes}m`
+}
+
+async function handleTimeUpdated(totalSeconds: number) {
+  // Reload task data to get updated time_spent_seconds
+  if (props.task) {
+    // Emit event to parent to reload data
+    emit('close')
+  }
+}
 
 const isValid = computed(() => {
   return title.value.trim().length > 0 && columnId.value !== null
@@ -224,6 +254,17 @@ function formatDateTime(date: string, time: string): string | null {
   if (!date) return null
   const t = time || '00:00'
   return `${date}T${t}:00`
+}
+
+async function saveEstimate() {
+  if (!props.task || estimatedMinutes.value === null) return
+
+  try {
+    await api.setTaskEstimate(props.task.id, estimatedMinutes.value)
+    // Points are calculated automatically by backend
+  } catch (e) {
+    console.error('Failed to set estimate:', e)
+  }
 }
 
 function save() {
@@ -238,6 +279,12 @@ function save() {
     due_date: formatDateTime(dueDate.value, dueTime.value),
     start_date: useTimeRange.value ? formatDateTime(startDate.value, startTime.value) : null,
     end_date: useTimeRange.value ? formatDateTime(endDate.value, endTime.value) : null,
+    estimated_minutes: estimatedMinutes.value,
+  }
+
+  // Save estimate if changed
+  if (props.task && estimatedMinutes.value !== props.task.estimated_minutes) {
+    saveEstimate()
   }
 
   emit('save', data)
@@ -432,6 +479,58 @@ defineExpose({ onProjectCreated })
             </div>
           </div>
 
+          <!-- ANT HILL Section -->
+          <div class="form-section ant-hill-section">
+            <h3><AppIcon name="target" :size="18" /> ANT HILL - Gamifikace</h3>
+
+            <!-- Time Tracker (only for existing tasks with assignment) -->
+            <div v-if="task && task.assigned_to" class="time-tracker-wrapper">
+              <TimeTracker :task-id="task.id" @time-updated="handleTimeUpdated" />
+              <div v-if="task.time_spent_seconds" class="time-spent-info">
+                <AppIcon name="timer" :size="16" /> {{ $t('timeTracking.spent') }}: {{ formatTimeSpent(task.time_spent_seconds) }}
+              </div>
+            </div>
+
+            <!-- Estimate & Points -->
+            <div class="estimate-row">
+              <div class="form-group">
+                <label>{{ $t('timeTracking.estimate') }} (minuty)</label>
+                <input
+                  v-model.number="estimatedMinutes"
+                  type="number"
+                  min="1"
+                  step="5"
+                  placeholder="30"
+                />
+              </div>
+              <div class="points-display">
+                <label>Body</label>
+                <div class="points-value">
+                  <PointsBadge :points="task?.points || calculatedPoints" size="large" variant="gradient" />
+                </div>
+              </div>
+            </div>
+
+            <div v-if="estimatedMinutes" class="estimate-hint">
+              <AppIcon name="sparkles" :size="14" /> {{ calculatedPoints }} {{ calculatedPoints === 1 ? 'bod' : 'bodů' }} (1 bod = 10 minut)
+            </div>
+
+            <!-- Assignment Info -->
+            <div v-if="task?.assigned_to" class="assignment-info">
+              <div class="info-row">
+                <span class="info-label"><AppIcon name="user" :size="14" /> Přiřazeno:</span>
+                <span class="info-value">{{ task.assigned_to }}</span>
+              </div>
+              <div v-if="task.assigned_at" class="info-row">
+                <span class="info-label"><AppIcon name="calendar" :size="14" /> Od:</span>
+                <span class="info-value">{{ new Date(task.assigned_at).toLocaleString('cs-CZ') }}</span>
+              </div>
+              <div v-if="task.claimed_from_marketplace" class="info-badge">
+                <AppIcon name="target" :size="14" /> Vzato z Marketplace
+              </div>
+            </div>
+          </div>
+
           <!-- Attachments Section (only for existing tasks) -->
           <div v-if="task" class="form-section attachments-section">
             <div class="attachments-header">
@@ -462,7 +561,7 @@ defineExpose({ onProjectCreated })
                 :key="attachment.id"
                 class="attachment-item"
               >
-                <span class="attachment-icon">{{ getFileIcon(attachment.file_type) }}</span>
+                <AppIcon :name="getFileIcon(attachment.file_type)" :size="20" class="attachment-icon" />
                 <div class="attachment-info">
                   <span class="attachment-name" :title="attachment.original_name">
                     {{ attachment.original_name }}
@@ -476,7 +575,7 @@ defineExpose({ onProjectCreated })
                     :title="$t('taskModal.download')"
                     @click="downloadAttachment(attachment)"
                   >
-                    ⬇️
+                    <AppIcon name="download" :size="16" />
                   </button>
                   <button
                     type="button"
@@ -484,7 +583,7 @@ defineExpose({ onProjectCreated })
                     :title="$t('common.delete')"
                     @click="deleteAttachment(attachment)"
                   >
-                    🗑️
+                    <AppIcon name="trash" :size="16" />
                   </button>
                 </div>
               </div>
@@ -880,5 +979,111 @@ defineExpose({ onProjectCreated })
   color: var(--text-muted);
   font-size: 0.875rem;
   font-style: italic;
+}
+
+/* ANT HILL Section */
+.ant-hill-section {
+  border: 2px solid var(--accent-purple);
+  background: linear-gradient(135deg, rgba(122, 162, 247, 0.05) 0%, rgba(187, 154, 247, 0.05) 100%);
+}
+
+.ant-hill-section h3 {
+  color: var(--accent-purple);
+}
+
+.time-tracker-wrapper {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  background: var(--bg-dark);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.time-spent-info {
+  margin-top: 0.75rem;
+  padding: 0.5rem;
+  background: var(--bg-lighter);
+  border-radius: 6px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.estimate-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: end;
+  margin-bottom: 0.5rem;
+}
+
+.points-display {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.points-display label {
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.points-value {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+}
+
+.estimate-hint {
+  padding: 0.5rem;
+  background: rgba(187, 154, 247, 0.1);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  color: var(--accent-purple);
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.assignment-info {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: var(--bg-dark);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.375rem 0;
+  font-size: 0.875rem;
+}
+
+.info-row:not(:last-child) {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.info-label {
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.info-value {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.info-badge {
+  margin-top: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  background: linear-gradient(135deg, #7aa2f7 0%, #bb9af7 100%);
+  color: var(--bg-dark);
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
 }
 </style>
