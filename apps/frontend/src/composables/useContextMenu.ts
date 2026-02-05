@@ -29,7 +29,7 @@ export function useContextMenu() {
     items.value = []
   }
 
-  const handleClickOutside = (event: MouseEvent) => {
+  const handleClickOutside = (_event: MouseEvent) => {
     if (isVisible.value) {
       hide()
     }

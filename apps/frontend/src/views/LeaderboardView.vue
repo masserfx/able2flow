@@ -4,9 +4,9 @@ import { useI18n } from 'vue-i18n'
 import { useApi, type LeaderboardEntry } from '../composables/useApi'
 import AppIcon from '../components/AppIcon.vue'
 
-const { t } = useI18n()
+const { t: _t } = useI18n()
 const api = useApi()
-const currentProjectId = inject<Ref<number | null>>('currentProjectId', ref(null))
+inject<Ref<number | null>>('currentProjectId', ref(null))
 
 const activeTab = ref<'daily' | 'weekly' | 'monthly' | 'allTime'>('weekly')
 const loading = ref(true)

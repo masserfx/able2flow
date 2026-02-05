@@ -371,8 +371,7 @@ function showContextMenu(event: MouseEvent, task: Task) {
             title: task.title,
             description: task.description || `Converted from task: ${task.title}`,
             severity: 'medium',
-            status: 'open',
-            project_id: task.project_id
+            status: 'open'
           })
           contextMenu.hide()
         } catch (e) {

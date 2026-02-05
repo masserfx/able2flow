@@ -45,13 +45,15 @@ async function pollNotifications() {
 
       // Show toast for first notification (FOMO effect)
       const firstNotif = newNotifs[0]
-      toast.show({
-        title: firstNotif.title,
-        message: firstNotif.message,
-        type: 'info',
-        icon: getNotificationIcon(firstNotif.notification_type),
-        duration: 4000,
-      })
+      if (firstNotif) {
+        toast.show({
+          title: firstNotif.title,
+          message: firstNotif.message,
+          type: 'info',
+          icon: getNotificationIcon(firstNotif.notification_type),
+          duration: 4000,
+        })
+      }
 
       // Play sound effect
       playNotificationSound()

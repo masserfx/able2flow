@@ -238,7 +238,7 @@ function formatTimeSpent(seconds: number | null): string {
   return `${minutes}m`
 }
 
-async function handleTimeUpdated(totalSeconds: number) {
+async function handleTimeUpdated(_totalSeconds: number) {
   // Reload task data to get updated time_spent_seconds
   if (props.task) {
     // Emit event to parent to reload data

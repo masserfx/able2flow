@@ -3,7 +3,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppIcon from '../components/AppIcon.vue'
 
-const { t } = useI18n()
+const { t: _t } = useI18n()
 const activeSection = ref(0)
 
 const sections = [
@@ -166,7 +166,7 @@ const workflow = [
               :style="{ animationDelay: `${si * 0.08}s` }"
             >
               <span class="step-badge">
-                <AppIcon v-if="section.stepIcons" :name="section.stepIcons[si]" :size="16" />
+                <AppIcon v-if="section.stepIcons" :name="section.stepIcons[si] ?? ''" :size="16" />
                 <template v-else>{{ step.num }}</template>
               </span>
               <span class="step-text">{{ step.text }}</span>
