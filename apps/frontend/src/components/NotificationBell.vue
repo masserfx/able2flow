@@ -2,15 +2,16 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type Notification } from '../composables/useApi'
+import { useAuth } from '../composables/useAuth'
 import { useToast } from '../composables/useToast'
 import AppIcon from './AppIcon.vue'
 
 const { t } = useI18n()
 const api = useApi()
+const { user } = useAuth()
 const toast = useToast()
 
-// Mock user ID (TODO: Replace with auth)
-const currentUserId = 'user_petr'
+const currentUserId = computed(() => user.value?.id || 'user_petr')
 
 const notifications = ref<Notification[]>([])
 const unreadCount = ref(0)
@@ -24,8 +25,8 @@ const hasUnread = computed(() => unreadCount.value > 0)
 
 async function loadNotifications() {
   try {
-    notifications.value = await api.getMyNotifications(currentUserId, false, 20)
-    const countData = await api.getUnreadCount(currentUserId)
+    notifications.value = await api.getMyNotifications(currentUserId.value, false, 20)
+    const countData = await api.getUnreadCount(currentUserId.value)
     unreadCount.value = countData.unread_count
   } catch (e) {
     console.error('Failed to load notifications:', e)
@@ -34,13 +35,13 @@ async function loadNotifications() {
 
 async function pollNotifications() {
   try {
-    const newNotifs = await api.pollNotifications(lastPollTime, currentUserId)
+    const newNotifs = await api.pollNotifications(lastPollTime, currentUserId.value)
     if (newNotifs.length > 0) {
       // Prepend new notifications
       notifications.value = [...newNotifs, ...notifications.value]
 
       // Update unread count
-      const countData = await api.getUnreadCount(currentUserId)
+      const countData = await api.getUnreadCount(currentUserId.value)
       unreadCount.value = countData.unread_count
 
       // Show toast for first notification (FOMO effect)

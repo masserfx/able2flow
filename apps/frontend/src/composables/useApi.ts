@@ -324,20 +324,23 @@ export function useApi() {
   const getAttachmentDownloadUrl = (attachmentId: number) =>
     `${API_URL}/attachments/${attachmentId}/download`
 
+  const getAttachmentPreviewUrl = (attachmentId: number) =>
+    `${API_URL}/attachments/${attachmentId}/preview`
+
   // ANT HILL - Time Tracking
-  const startTimeTracking = (taskId: number, userId: string = 'user_petr') =>
+  const startTimeTracking = (taskId: number, userId: string) =>
     fetchJson<TimeLog>('/time-tracking/start', {
       method: 'POST',
       body: JSON.stringify({ task_id: taskId, user_id: userId }),
     })
 
-  const stopTimeTracking = (logId: number, userId: string = 'user_petr') =>
+  const stopTimeTracking = (logId: number, userId: string) =>
     fetchJson<TimeLog>('/time-tracking/stop', {
       method: 'POST',
       body: JSON.stringify({ log_id: logId, user_id: userId }),
     })
 
-  const getActiveTimeLog = (userId: string = 'user_petr') =>
+  const getActiveTimeLog = (userId: string) =>
     fetchJson<TimeLog | null>(`/time-tracking/active?user_id=${userId}`)
 
   const getTaskTimeLogs = (taskId: number) =>
@@ -347,13 +350,13 @@ export function useApi() {
   const getMarketplaceTasks = (projectId?: number) =>
     fetchJson<Task[]>(`/tasks/marketplace${projectId ? `?project_id=${projectId}` : ''}`)
 
-  const assignTaskToMe = (taskId: number, userId: string = 'user_petr') =>
+  const assignTaskToMe = (taskId: number, userId: string, userName?: string, userEmail?: string, userAvatar?: string) =>
     fetchJson<Task>(`/tasks/${taskId}/assign-to-me`, {
       method: 'POST',
-      body: JSON.stringify({ user_id: userId }),
+      body: JSON.stringify({ user_id: userId, user_name: userName, user_email: userEmail, user_avatar: userAvatar }),
     })
 
-  const releaseTask = (taskId: number, userId: string = 'user_petr') =>
+  const releaseTask = (taskId: number, userId: string) =>
     fetchJson<{ message: string; task: Task }>(`/tasks/${taskId}/release`, {
       method: 'POST',
       body: JSON.stringify({ user_id: userId }),
@@ -379,7 +382,7 @@ export function useApi() {
     fetchJson<LeaderboardEntry[]>(`/leaderboard/all-time?limit=${limit}`)
 
   // ANT HILL - Comments
-  const createComment = (taskId: number, content: string, userId: string = 'user_petr') =>
+  const createComment = (taskId: number, content: string, userId: string) =>
     fetchJson<Comment>('/comments', {
       method: 'POST',
       body: JSON.stringify({ task_id: taskId, user_id: userId, content }),
@@ -391,20 +394,20 @@ export function useApi() {
   const markCommentAsSolution = (commentId: number) =>
     fetchJson<{ message: string }>(`/comments/${commentId}/mark-solution`, { method: 'PUT' })
 
-  const deleteComment = (commentId: number, userId: string = 'user_petr') =>
+  const deleteComment = (commentId: number, userId: string) =>
     fetchJson<{ message: string }>(`/comments/${commentId}?user_id=${userId}`, { method: 'DELETE' })
 
   // ANT HILL - Notifications
-  const getMyNotifications = (userId: string = 'user_petr', unreadOnly: boolean = false, limit: number = 50) =>
+  const getMyNotifications = (userId: string, unreadOnly: boolean = false, limit: number = 50) =>
     fetchJson<Notification[]>(`/notifications/me?user_id=${userId}&unread_only=${unreadOnly}&limit=${limit}`)
 
-  const pollNotifications = (since: string, userId: string = 'user_petr') =>
+  const pollNotifications = (since: string, userId: string) =>
     fetchJson<Notification[]>(`/notifications/poll?since=${encodeURIComponent(since)}&user_id=${userId}`)
 
   const markNotificationRead = (notificationId: number) =>
     fetchJson<{ message: string }>(`/notifications/${notificationId}/read`, { method: 'PUT' })
 
-  const getUnreadCount = (userId: string = 'user_petr') =>
+  const getUnreadCount = (userId: string) =>
     fetchJson<{ unread_count: number }>(`/notifications/unread-count?user_id=${userId}`)
 
   return {
@@ -449,6 +452,7 @@ export function useApi() {
     uploadAttachment,
     deleteAttachment,
     getAttachmentDownloadUrl,
+    getAttachmentPreviewUrl,
     // ANT HILL - Time Tracking
     startTimeTracking,
     stopTimeTracking,

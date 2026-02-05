@@ -182,9 +182,9 @@ function isImageAttachment(attachment: Attachment): boolean {
   return imageTypes.includes(attachment.file_type.toLowerCase())
 }
 
-// Get attachment preview URL
+// Get attachment preview URL (inline with correct MIME type)
 function getAttachmentUrl(attachment: Attachment): string {
-  return api.getAttachmentDownloadUrl(attachment.id)
+  return api.getAttachmentPreviewUrl(attachment.id)
 }
 
 // Get file icon for non-image files

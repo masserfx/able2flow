@@ -120,6 +120,7 @@
     "addAttachment": "+ Přidat soubor",
     "uploading": "Nahrávám...",
     "download": "Stáhnout",
+    "preview": "Náhled",
     "noAttachments": "Žádné přílohy",
     "deleteAttachmentConfirm": "Smazat \"{name}\"?",
     "estimateMinutes": "Odhadovaný čas (minuty)",

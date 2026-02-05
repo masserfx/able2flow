@@ -2,21 +2,22 @@
 import { ref, computed, onMounted, inject, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type LeaderboardEntry } from '../composables/useApi'
+import { useAuth } from '../composables/useAuth'
 import AppIcon from '../components/AppIcon.vue'
 
 const { t: _t } = useI18n()
 const api = useApi()
+const { user } = useAuth()
 inject<Ref<number | null>>('currentProjectId', ref(null))
 
 const activeTab = ref<'daily' | 'weekly' | 'monthly' | 'allTime'>('weekly')
 const loading = ref(true)
 const entries = ref<LeaderboardEntry[]>([])
 
-// Mock current user (TODO: Replace with auth)
-const currentUserId = 'user_petr'
+const currentUserId = computed(() => user.value?.id || 'user_petr')
 
 const currentUserEntry = computed(() => {
-  return entries.value.find(e => e.user_id === currentUserId)
+  return entries.value.find(e => e.user_id === currentUserId.value)
 })
 
 async function loadLeaderboard() {

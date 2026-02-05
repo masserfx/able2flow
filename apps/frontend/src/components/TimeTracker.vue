@@ -2,10 +2,12 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type TimeLog } from '../composables/useApi'
+import { useAuth } from '../composables/useAuth'
 import AppIcon from './AppIcon.vue'
 
 const { t } = useI18n()
 const api = useApi()
+const { user } = useAuth()
 
 const props = defineProps<{
   taskId: number
@@ -15,8 +17,7 @@ const emit = defineEmits<{
   timeUpdated: [seconds: number]
 }>()
 
-// Mock user ID (TODO: Replace with auth)
-const currentUserId = 'user_petr'
+const currentUserId = computed(() => user.value?.id || 'user_petr')
 
 const activeLog = ref<TimeLog | null>(null)
 const loading = ref(false)
@@ -38,7 +39,7 @@ const formattedTime = computed(() => {
 
 async function loadActiveLog() {
   try {
-    const log = await api.getActiveTimeLog(currentUserId)
+    const log = await api.getActiveTimeLog(currentUserId.value)
     if (log && log.task_id === props.taskId) {
       activeLog.value = log
       startTimer()
@@ -76,7 +77,7 @@ async function startTracking() {
 
   loading.value = true
   try {
-    const log = await api.startTimeTracking(props.taskId, currentUserId)
+    const log = await api.startTimeTracking(props.taskId, currentUserId.value)
     activeLog.value = log
     startTimer()
   } catch (e) {
@@ -92,7 +93,7 @@ async function stopTracking() {
 
   loading.value = true
   try {
-    const log = await api.stopTimeTracking(activeLog.value.id, currentUserId)
+    const log = await api.stopTimeTracking(activeLog.value.id, currentUserId.value)
     stopTimer()
     activeLog.value = null
 

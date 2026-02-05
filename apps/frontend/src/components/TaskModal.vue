@@ -123,6 +123,27 @@ function downloadAttachment(attachment: Attachment) {
   window.open(api.getAttachmentDownloadUrl(attachment.id), '_blank')
 }
 
+function previewAttachment(attachment: Attachment) {
+  window.open(api.getAttachmentPreviewUrl(attachment.id), '_blank')
+}
+
+function getPreviewUrl(attachment: Attachment): string {
+  return api.getAttachmentPreviewUrl(attachment.id)
+}
+
+function isImageAttachment(attachment: Attachment): boolean {
+  const imageTypes = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg']
+  return imageTypes.includes(attachment.file_type.toLowerCase())
+}
+
+function isPdfAttachment(attachment: Attachment): boolean {
+  return attachment.file_type.toLowerCase() === '.pdf'
+}
+
+function isPreviewable(attachment: Attachment): boolean {
+  return isImageAttachment(attachment) || isPdfAttachment(attachment)
+}
+
 function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
@@ -560,8 +581,19 @@ defineExpose({ onProjectCreated })
                 v-for="attachment in attachments"
                 :key="attachment.id"
                 class="attachment-item"
+                :class="{ 'has-preview': isPreviewable(attachment) }"
               >
-                <AppIcon :name="getFileIcon(attachment.file_type)" :size="20" class="attachment-icon" />
+                <!-- Image thumbnail -->
+                <div
+                  v-if="isImageAttachment(attachment)"
+                  class="attachment-thumbnail"
+                  @click="previewAttachment(attachment)"
+                >
+                  <img :src="getPreviewUrl(attachment)" :alt="attachment.original_name" />
+                </div>
+                <!-- File icon for non-images -->
+                <AppIcon v-else :name="getFileIcon(attachment.file_type)" :size="20" class="attachment-icon" />
+
                 <div class="attachment-info">
                   <span class="attachment-name" :title="attachment.original_name">
                     {{ attachment.original_name }}
@@ -569,6 +601,16 @@ defineExpose({ onProjectCreated })
                   <span class="attachment-size">{{ formatFileSize(attachment.file_size) }}</span>
                 </div>
                 <div class="attachment-actions">
+                  <!-- Preview button for PDF -->
+                  <button
+                    v-if="isPdfAttachment(attachment)"
+                    type="button"
+                    class="action-btn preview-btn"
+                    :title="$t('taskModal.preview')"
+                    @click="previewAttachment(attachment)"
+                  >
+                    <AppIcon name="eye" :size="16" />
+                  </button>
                   <button
                     type="button"
                     class="action-btn download-btn"
@@ -924,6 +966,28 @@ defineExpose({ onProjectCreated })
   flex-shrink: 0;
 }
 
+.attachment-thumbnail {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.attachment-thumbnail:hover {
+  border-color: var(--accent-blue);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.attachment-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .attachment-info {
   flex: 1;
   min-width: 0;
@@ -963,6 +1027,11 @@ defineExpose({ onProjectCreated })
 
 .action-btn:hover {
   background: var(--bg-lighter);
+}
+
+.preview-btn:hover {
+  border-color: var(--accent-blue);
+  color: var(--accent-blue);
 }
 
 .download-btn:hover {

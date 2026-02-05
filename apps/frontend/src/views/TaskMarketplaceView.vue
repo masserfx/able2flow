@@ -2,10 +2,12 @@
 import { ref, computed, onMounted, inject, watch, type Ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useApi, type Task, type Project } from '../composables/useApi'
+import { useAuth } from '../composables/useAuth'
 import AppIcon from '../components/AppIcon.vue'
 
 const { t } = useI18n()
 const api = useApi()
+const { user } = useAuth()
 const currentProjectId = inject<Ref<number | null>>('currentProjectId', ref(null))
 
 const tasks = ref<Task[]>([])
@@ -14,8 +16,7 @@ const loading = ref(true)
 const claimingTaskId = ref<number | null>(null)
 const sortBy = ref<'points' | 'newest'>('points')
 
-// Mock user ID (TODO: Replace with auth)
-const currentUserId = 'user_petr'
+const currentUserId = computed(() => user.value?.id || 'user_petr')
 
 // Filter by project
 const filteredTasks = computed(() => {
@@ -60,7 +61,7 @@ async function claimTask(task: Task) {
 
   claimingTaskId.value = task.id
   try {
-    await api.assignTaskToMe(task.id, currentUserId)
+    await api.assignTaskToMe(task.id, currentUserId.value, user.value?.name || undefined, user.value?.email || undefined, user.value?.image_url || undefined)
     // Remove from marketplace
     tasks.value = tasks.value.filter(t => t.id !== task.id)
   } catch (e) {

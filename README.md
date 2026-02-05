@@ -124,7 +124,18 @@ Open http://localhost:5173
 ### File Attachments
 - Upload files to tasks (max 10MB)
 - Supported: images, documents, archives
-- Preview in kanban cards
+- **Inline preview** - SVG, PNG, JPG thumbnails in kanban cards and task modal
+- **PDF preview** - Open PDF files directly in browser
+- Correct MIME types via `/preview` endpoint
+
+### ANT HILL Gamification
+- **Task Marketplace** - Pull-based system, workers choose their tasks
+- **Time Tracking** - Built-in stopwatch per task
+- **Points System** - 1 point = 10 min estimated time
+- **Bonuses** - Speed (+20%), deadline (+10%), priority (critical +5, high +3)
+- **Leaderboard** - Daily, weekly, monthly, all-time rankings
+- **Notifications** - Real-time toast + bell notifications
+- **Clerk Auth** - Real user identity (no mock data), auto-registration from Clerk
 
 ## API Endpoints
 
@@ -162,6 +173,28 @@ GET    /api/incidents/open     # List open incidents
 POST   /api/incidents          # Create incident
 POST   /api/incidents/{id}/acknowledge # Acknowledge
 POST   /api/incidents/{id}/resolve     # Resolve
+```
+
+### Attachments
+```
+POST   /api/tasks/{id}/attachments           # Upload attachment
+GET    /api/attachments/{id}/download         # Download file
+GET    /api/attachments/{id}/preview          # Preview with correct MIME type
+DELETE /api/attachments/{id}                  # Delete attachment
+```
+
+### Gamification
+```
+POST   /api/tasks/{id}/assign                # Claim task (marketplace)
+POST   /api/tasks/{id}/release               # Release task
+POST   /api/time-tracking/start              # Start timer
+POST   /api/time-tracking/stop               # Stop timer
+GET    /api/time-tracking/active             # Active time log
+GET    /api/gamification/leaderboard         # Leaderboard
+GET    /api/gamification/user/{id}/points    # User points
+GET    /api/notifications/{user_id}          # Notifications
+POST   /api/notifications/{id}/read          # Mark as read
+GET    /api/tasks/marketplace                # Available tasks
 ```
 
 ### Dashboard & Audit
@@ -227,6 +260,10 @@ able2flow/
 │           │   └── useIntegrations.ts
 │           ├── components/
 │           │   ├── TaskModal.vue
+│           │   ├── AppIcon.vue         # SVG icon library
+│           │   ├── TimeTracker.vue     # Stopwatch component
+│           │   ├── NotificationBell.vue
+│           │   ├── PointsBadge.vue
 │           │   └── IntegrationCard.vue
 │           └── views/
 │               ├── LandingView.vue       # Landing page

@@ -30,6 +30,21 @@ ALLOWED_EXTENSIONS = {
 
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
+# MIME type mapping for inline preview
+MIME_TYPES = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".gif": "image/gif",
+    ".webp": "image/webp",
+    ".svg": "image/svg+xml",
+    ".pdf": "application/pdf",
+    ".txt": "text/plain",
+    ".md": "text/plain",
+    ".csv": "text/csv",
+    ".json": "application/json",
+}
+
 
 class Attachment(BaseModel):
     id: int
@@ -152,6 +167,37 @@ def download_attachment(attachment_id: int):
             path=file_path,
             filename=attachment["original_name"],
             media_type="application/octet-stream"
+        )
+
+
+@router.get("/{attachment_id}/preview")
+def preview_attachment(attachment_id: int):
+    """Preview an attachment file with correct MIME type (inline display)."""
+    with get_db() as conn:
+        cursor = conn.execute(
+            "SELECT * FROM attachments WHERE id = ?",
+            (attachment_id,)
+        )
+        row = cursor.fetchone()
+
+        if not row:
+            raise HTTPException(status_code=404, detail="Attachment not found")
+
+        attachment = row_to_attachment(row)
+        file_path = UPLOAD_DIR / attachment["filename"]
+
+        if not file_path.exists():
+            raise HTTPException(status_code=404, detail="File not found on disk")
+
+        mime_type = MIME_TYPES.get(
+            attachment["file_type"].lower(),
+            "application/octet-stream"
+        )
+
+        return FileResponse(
+            path=file_path,
+            media_type=mime_type,
+            headers={"Content-Disposition": "inline"},
         )
 
 

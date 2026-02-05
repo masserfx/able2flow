@@ -120,6 +120,7 @@
     "addAttachment": "+ Add File",
     "uploading": "Uploading...",
     "download": "Download",
+    "preview": "Preview",
     "noAttachments": "No attachments",
     "deleteAttachmentConfirm": "Delete \"{name}\"?",
     "estimateMinutes": "Estimated time (minutes)",

@@ -89,6 +89,34 @@ const sections = [
     tip: 'Nastav odhad (minuty) před zahájením práce pro správný výpočet bodů.',
     color: '#73daca',
   },
+  {
+    icon: 'paperclip',
+    title: 'Přílohy',
+    subtitle: 'Soubory u úkolů',
+    stepIcons: ['file-image', 'eye', 'file', 'download'],
+    steps: [
+      { num: 0, text: 'Nahraj obrázky (PNG, JPG, SVG) - zobrazí se jako náhled v kartě i modálu' },
+      { num: 0, text: 'PDF soubory mají tlačítko "Náhled" - otevře se přímo v prohlížeči' },
+      { num: 0, text: 'Další formáty (ZIP, DOCX, TXT) lze stáhnout přes ikonu stažení' },
+      { num: 0, text: 'Přílohy smažeš kliknutím na ikonu koše u souboru' },
+    ],
+    tip: 'Maximální velikost souboru je 10 MB. SVG ikony se zobrazují přímo v kartách na nástěnce.',
+    color: '#ff9e64',
+  },
+  {
+    icon: 'user',
+    title: 'Přihlášení',
+    subtitle: 'Clerk autentizace',
+    stepIcons: ['globe', 'user', 'trophy', 'check-circle'],
+    steps: [
+      { num: 0, text: 'Přihlaš se přes Clerk (Google, GitHub nebo email)' },
+      { num: 0, text: 'Tvoje identita se automaticky propojí s gamifikací' },
+      { num: 0, text: 'Body a žebříček sledují tvůj skutečný účet' },
+      { num: 0, text: 'Nový uživatel se automaticky zaregistruje při prvním přijetí tasku' },
+    ],
+    tip: 'Po přihlášení vidíš v žebříčku svou pozici zvýrazněnou. Tvůj avatar se zobrazuje u přiřazených úkolů.',
+    color: '#c0caf5',
+  },
 ]
 
 const workflow = [

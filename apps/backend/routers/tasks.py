@@ -407,7 +407,10 @@ def archive_task(task_id: int) -> dict:
 class TaskAssignment(BaseModel):
     """Task assignment request."""
 
-    user_id: str  # TODO: Replace with auth dependency
+    user_id: str
+    user_name: str | None = None
+    user_email: str | None = None
+    user_avatar: str | None = None
 
 
 class TaskEstimate(BaseModel):
@@ -433,6 +436,17 @@ def assign_task_to_me(task_id: int, data: TaskAssignment):
             raise HTTPException(status_code=409, detail="Task already assigned")
 
         old_value = row_to_task(existing)
+
+        # Ensure user exists in users table (auto-register from Clerk)
+        user_row = conn.execute(
+            "SELECT id FROM users WHERE id = ?", (data.user_id,)
+        ).fetchone()
+        if not user_row and data.user_id:
+            conn.execute(
+                "INSERT OR IGNORE INTO users (id, email, name, avatar_url) VALUES (?, ?, ?, ?)",
+                (data.user_id, data.user_email or '', data.user_name or data.user_id, data.user_avatar),
+            )
+            conn.commit()
 
         # Assign task
         conn.execute(
