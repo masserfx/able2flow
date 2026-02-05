@@ -10,6 +10,45 @@ from database import get_db
 from services import audit_service
 from services.ai_triage_service import ai_triage
 
+
+INCIDENT_TEMPLATES = [
+    {
+        "id": "db-slow",
+        "name": "Database Slow Query",
+        "title": "Database response time > 5s",
+        "severity": "critical",
+        "description": "Database queries taking longer than 5s. Check slow query log and index usage."
+    },
+    {
+        "id": "api-timeout",
+        "name": "API Timeout",
+        "title": "API endpoint timeout",
+        "severity": "critical",
+        "description": "External API not responding within timeout threshold (10s)."
+    },
+    {
+        "id": "high-cpu",
+        "name": "High CPU Usage",
+        "title": "CPU usage above 80%",
+        "severity": "warning",
+        "description": "Server CPU usage sustained above 80% for 5+ minutes."
+    },
+    {
+        "id": "disk-space",
+        "name": "Low Disk Space",
+        "title": "Disk space < 10%",
+        "severity": "warning",
+        "description": "Available disk space below 10%. Consider cleanup or expansion."
+    },
+    {
+        "id": "ssl-expiry",
+        "name": "SSL Certificate Expiring",
+        "title": "SSL certificate expires in <30 days",
+        "severity": "warning",
+        "description": "SSL certificate nearing expiration. Renew before expiry date."
+    }
+]
+
 router = APIRouter(prefix="/api/incidents", tags=["incidents"])
 
 
@@ -17,6 +56,7 @@ class IncidentCreate(BaseModel):
     monitor_id: int | None = None
     title: str
     severity: str = "warning"
+    description: str | None = None
     project_id: int | None = None
 
 
@@ -32,6 +72,7 @@ class Incident(BaseModel):
     title: str
     status: str
     severity: str
+    description: str | None
     started_at: str
     acknowledged_at: str | None
     resolved_at: str | None
@@ -45,10 +86,18 @@ def row_to_incident(row) -> dict:
         "title": row["title"],
         "status": row["status"],
         "severity": row["severity"],
+        "description": row["description"] if "description" in row.keys() else None,
         "started_at": row["started_at"],
         "acknowledged_at": row["acknowledged_at"],
         "resolved_at": row["resolved_at"],
     }
+
+
+
+@router.get("/templates")
+def get_incident_templates() -> dict:
+    """Get list of incident templates for quick creation."""
+    return {"templates": INCIDENT_TEMPLATES}
 
 
 @router.get("", response_model=list[Incident])
@@ -110,10 +159,10 @@ def create_incident(incident: IncidentCreate) -> dict:
     with get_db() as conn:
         cursor = conn.execute(
             """
-            INSERT INTO incidents (monitor_id, title, severity, started_at)
-            VALUES (?, ?, ?, ?)
+            INSERT INTO incidents (monitor_id, title, severity, description, started_at)
+            VALUES (?, ?, ?, ?, ?)
             """,
-            (incident.monitor_id, incident.title, incident.severity, datetime.now().isoformat()),
+            (incident.monitor_id, incident.title, incident.severity, incident.description, datetime.now().isoformat()),
         )
         conn.commit()
         incident_id = cursor.lastrowid

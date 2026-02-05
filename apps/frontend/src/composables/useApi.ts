@@ -21,6 +21,15 @@ export interface Task {
   priority: string
   due_date: string | null
   created_at: string
+  archived: boolean
+  // ANT HILL fields
+  assigned_to: string | null
+  assigned_at: string | null
+  estimated_minutes: number | null
+  points: number | null
+  time_spent_seconds: number | null
+  completed_at: string | null
+  claimed_from_marketplace: boolean
 }
 
 export interface Column {
@@ -54,12 +63,22 @@ export interface Monitor {
   created_at: string
 }
 
+
+export interface IncidentTemplate {
+  id: string
+  name: string
+  title: string
+  severity: 'warning' | 'critical'
+  description: string
+}
+
 export interface Incident {
   id: number
   monitor_id: number | null
   title: string
   status: string
   severity: string
+  description?: string
   started_at: string
   acknowledged_at: string | null
   resolved_at: string | null
@@ -96,6 +115,52 @@ export interface DashboardData {
     total_actions: number
     recent_24h: number
   }
+}
+
+// ANT HILL interfaces
+export interface TimeLog {
+  id: number
+  task_id: number
+  user_id: string
+  user_name?: string
+  started_at: string
+  ended_at: string | null
+  duration_seconds: number | null
+  is_active: number
+}
+
+export interface LeaderboardEntry {
+  rank: number
+  user_id: string
+  user_name: string
+  user_email: string
+  avatar_url: string | null
+  points_earned: number
+  tasks_completed: number
+  bonus_points: number
+  total_points: number
+}
+
+export interface Comment {
+  id: number
+  task_id: number
+  user_id: string
+  user_name: string | null
+  user_avatar: string | null
+  content: string
+  is_solution: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface Notification {
+  id: number
+  notification_type: string
+  title: string
+  message: string
+  related_task_id: number | null
+  is_read: boolean
+  created_at: string
 }
 
 export function useApi() {
@@ -164,6 +229,12 @@ export function useApi() {
   const deleteTask = (id: number) =>
     fetchJson<{ message: string }>(`/tasks/${id}`, { method: 'DELETE' })
 
+  const duplicateTask = (id: number) =>
+    fetchJson<Task>(`/tasks/${id}/duplicate`, { method: 'POST' })
+
+  const archiveTask = (id: number) =>
+    fetchJson<Task>(`/tasks/${id}/archive`, { method: 'PUT' })
+
   // Columns
   const getColumns = (projectId?: number) =>
     fetchJson<Column[]>('/columns' + buildQuery({ project_id: projectId }))
@@ -199,6 +270,8 @@ export function useApi() {
 
   const getOpenIncidents = (projectId?: number) =>
     fetchJson<Incident[]>('/incidents/open' + buildQuery({ project_id: projectId }))
+
+  const getIncidentTemplates = (): Promise<any[]> => Promise.resolve([])
 
   const createIncident = (incident: Partial<Incident>) =>
     fetchJson<Incident>('/incidents', { method: 'POST', body: JSON.stringify(incident) })
@@ -251,6 +324,89 @@ export function useApi() {
   const getAttachmentDownloadUrl = (attachmentId: number) =>
     `${API_URL}/attachments/${attachmentId}/download`
 
+  // ANT HILL - Time Tracking
+  const startTimeTracking = (taskId: number, userId: string = 'user_petr') =>
+    fetchJson<TimeLog>('/time-tracking/start', {
+      method: 'POST',
+      body: JSON.stringify({ task_id: taskId, user_id: userId }),
+    })
+
+  const stopTimeTracking = (logId: number, userId: string = 'user_petr') =>
+    fetchJson<TimeLog>('/time-tracking/stop', {
+      method: 'POST',
+      body: JSON.stringify({ log_id: logId, user_id: userId }),
+    })
+
+  const getActiveTimeLog = (userId: string = 'user_petr') =>
+    fetchJson<TimeLog | null>(`/time-tracking/active?user_id=${userId}`)
+
+  const getTaskTimeLogs = (taskId: number) =>
+    fetchJson<TimeLog[]>(`/time-tracking/task/${taskId}/logs`)
+
+  // ANT HILL - Task Assignment & Marketplace
+  const getMarketplaceTasks = (projectId?: number) =>
+    fetchJson<Task[]>(`/tasks/marketplace${projectId ? `?project_id=${projectId}` : ''}`)
+
+  const assignTaskToMe = (taskId: number, userId: string = 'user_petr') =>
+    fetchJson<Task>(`/tasks/${taskId}/assign-to-me`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    })
+
+  const releaseTask = (taskId: number, userId: string = 'user_petr') =>
+    fetchJson<{ message: string; task: Task }>(`/tasks/${taskId}/release`, {
+      method: 'POST',
+      body: JSON.stringify({ user_id: userId }),
+    })
+
+  const setTaskEstimate = (taskId: number, estimatedMinutes: number) =>
+    fetchJson<Task>(`/tasks/${taskId}/estimate`, {
+      method: 'PUT',
+      body: JSON.stringify({ estimated_minutes: estimatedMinutes }),
+    })
+
+  // ANT HILL - Leaderboard
+  const getWeeklyLeaderboard = (limit: number = 10) =>
+    fetchJson<LeaderboardEntry[]>(`/leaderboard/weekly?limit=${limit}`)
+
+  const getMonthlyLeaderboard = (limit: number = 10) =>
+    fetchJson<LeaderboardEntry[]>(`/leaderboard/monthly?limit=${limit}`)
+
+  const getDailyLeaderboard = (limit: number = 10) =>
+    fetchJson<LeaderboardEntry[]>(`/leaderboard/daily?limit=${limit}`)
+
+  const getAllTimeLeaderboard = (limit: number = 10) =>
+    fetchJson<LeaderboardEntry[]>(`/leaderboard/all-time?limit=${limit}`)
+
+  // ANT HILL - Comments
+  const createComment = (taskId: number, content: string, userId: string = 'user_petr') =>
+    fetchJson<Comment>('/comments', {
+      method: 'POST',
+      body: JSON.stringify({ task_id: taskId, user_id: userId, content }),
+    })
+
+  const getTaskComments = (taskId: number) =>
+    fetchJson<Comment[]>(`/comments/task/${taskId}`)
+
+  const markCommentAsSolution = (commentId: number) =>
+    fetchJson<{ message: string }>(`/comments/${commentId}/mark-solution`, { method: 'PUT' })
+
+  const deleteComment = (commentId: number, userId: string = 'user_petr') =>
+    fetchJson<{ message: string }>(`/comments/${commentId}?user_id=${userId}`, { method: 'DELETE' })
+
+  // ANT HILL - Notifications
+  const getMyNotifications = (userId: string = 'user_petr', unreadOnly: boolean = false, limit: number = 50) =>
+    fetchJson<Notification[]>(`/notifications/me?user_id=${userId}&unread_only=${unreadOnly}&limit=${limit}`)
+
+  const pollNotifications = (since: string, userId: string = 'user_petr') =>
+    fetchJson<Notification[]>(`/notifications/poll?since=${encodeURIComponent(since)}&user_id=${userId}`)
+
+  const markNotificationRead = (notificationId: number) =>
+    fetchJson<{ message: string }>(`/notifications/${notificationId}/read`, { method: 'PUT' })
+
+  const getUnreadCount = (userId: string = 'user_petr') =>
+    fetchJson<{ unread_count: number }>(`/notifications/unread-count?user_id=${userId}`)
+
   return {
     loading,
     error,
@@ -265,6 +421,8 @@ export function useApi() {
     updateTask,
     moveTask,
     deleteTask,
+    duplicateTask,
+    archiveTask,
     // Columns
     getColumns,
     createColumn,
@@ -278,6 +436,7 @@ export function useApi() {
     // Incidents
     getIncidents,
     getOpenIncidents,
+    getIncidentTemplates,
     createIncident,
     acknowledgeIncident,
     resolveIncident,
@@ -290,5 +449,30 @@ export function useApi() {
     uploadAttachment,
     deleteAttachment,
     getAttachmentDownloadUrl,
+    // ANT HILL - Time Tracking
+    startTimeTracking,
+    stopTimeTracking,
+    getActiveTimeLog,
+    getTaskTimeLogs,
+    // ANT HILL - Marketplace & Assignment
+    getMarketplaceTasks,
+    assignTaskToMe,
+    releaseTask,
+    setTaskEstimate,
+    // ANT HILL - Leaderboard
+    getWeeklyLeaderboard,
+    getMonthlyLeaderboard,
+    getDailyLeaderboard,
+    getAllTimeLeaderboard,
+    // ANT HILL - Comments
+    createComment,
+    getTaskComments,
+    markCommentAsSolution,
+    deleteComment,
+    // ANT HILL - Notifications
+    getMyNotifications,
+    pollNotifications,
+    markNotificationRead,
+    getUnreadCount,
   }
 }

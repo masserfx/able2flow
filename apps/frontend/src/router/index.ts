@@ -32,6 +32,21 @@ const routes = [
     component: () => import('../views/AuditView.vue'),
   },
   {
+    path: '/marketplace',
+    name: 'marketplace',
+    component: () => import('../views/TaskMarketplaceView.vue'),
+  },
+  {
+    path: '/leaderboard',
+    name: 'leaderboard',
+    component: () => import('../views/LeaderboardView.vue'),
+  },
+  {
+    path: '/guide',
+    name: 'guide',
+    component: () => import('../views/GuideView.vue'),
+  },
+  {
     path: '/settings/integrations',
     name: 'integrations',
     component: () => import('../views/IntegrationsView.vue'),

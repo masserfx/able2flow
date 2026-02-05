@@ -31,9 +31,12 @@
   "nav": {
     "dashboard": "Přehled",
     "board": "Nástěnka",
+    "marketplace": "Trh",
+    "leaderboard": "Žebříček",
     "monitors": "Monitory",
     "incidents": "Incidenty",
-    "auditLog": "Auditní log"
+    "auditLog": "Auditní log",
+    "guide": "Návod"
   },
   "dashboard": {
     "title": "Přehled",
@@ -72,7 +75,16 @@
     "loading": "Načítám nástěnku...",
     "dropTasksHere": "Přetáhněte úkoly sem",
     "deleteConfirm": "Smazat \"{title}\"?",
-    "selectProject": "Vyberte projekt pro zobrazení"
+    "selectProject": "Vyberte projekt pro zobrazení",
+    "contextMenu": {
+      "duplicate": "Duplikovat",
+      "move": "Přesunout do...",
+      "convertToIncident": "Převést na incident",
+      "changePriority": "Změnit prioritu",
+      "archive": "Archivovat",
+      "unarchive": "Obnovit z archivu",
+      "delete": "Smazat"
+    }
   },
   "taskModal": {
     "createTitle": "Nový úkol",
@@ -109,7 +121,12 @@
     "uploading": "Nahrávám...",
     "download": "Stáhnout",
     "noAttachments": "Žádné přílohy",
-    "deleteAttachmentConfirm": "Smazat \"{name}\"?"
+    "deleteAttachmentConfirm": "Smazat \"{name}\"?",
+    "estimateMinutes": "Odhadovaný čas (minuty)",
+    "points": "Body",
+    "assignedTo": "Přiřazeno",
+    "assignedSince": "Od",
+    "claimedFromMarketplace": "Vzato z Marketplace"
   },
   "monitors": {
     "title": "Monitory",
@@ -157,7 +174,11 @@
     "resolve": "Vyřešit",
     "statusOpen": "otevřeno",
     "statusAcknowledged": "potvrzeno",
-    "statusResolved": "vyřešeno"
+    "statusResolved": "vyřešeno",
+    "template": "Šablona (volitelné)",
+    "customIncident": "Vlastní incident",
+    "description": "Popis",
+    "descriptionPlaceholder": "Popis incidentu a detaily..."
   },
   "audit": {
     "title": "Auditní log",
@@ -203,5 +224,48 @@
     "slack": {
       "description": "Získejte notifikace ve Slack kanálech"
     }
+  },
+  "marketplace": {
+    "title": "Trh s Úkoly",
+    "subtitle": "Vezměte si úkol a získejte body",
+    "byPoints": "Podle Bodů",
+    "newest": "Nejnovější",
+    "noTasks": "Žádné dostupné úkoly",
+    "noTasksDesc": "Zkuste to později, až přibudou nové úkoly",
+    "points": "bodů",
+    "claim": "Vzít Task",
+    "claiming": "Beru...",
+    "claimError": "Nepodařilo se vzít úkol. Zkuste to znovu."
+  },
+  "leaderboard": {
+    "title": "Žebříček",
+    "subtitle": "Nejlepší hráči a umístění",
+    "daily": "Denní",
+    "weekly": "Týdenní",
+    "monthly": "Měsíční",
+    "allTime": "Celkově",
+    "yourRank": "Vaše pozice",
+    "totalPoints": "Celkem bodů",
+    "tasksCompleted": "Úkolů",
+    "bonusPoints": "Bonus",
+    "points": "Body",
+    "bonus": "Bonus",
+    "tasks": "Úkoly",
+    "total": "Celkem",
+    "noData": "Žádná data",
+    "noDataDesc": "Dokončete úkoly a objevte se v žebříčku"
+  },
+  "timeTracking": {
+    "start": "Spustit Stopky",
+    "stop": "Zastavit",
+    "estimate": "Odhad",
+    "spent": "Strávený čas",
+    "startError": "Nepodařilo se spustit měření času",
+    "stopError": "Nepodařilo se zastavit měření času"
+  },
+  "notifications": {
+    "title": "Notifikace",
+    "markAllRead": "Označit vše jako přečtené",
+    "noNotifications": "Zatím žádné notifikace"
   }
 }

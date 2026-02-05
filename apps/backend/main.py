@@ -22,6 +22,7 @@ logging.basicConfig(
 )
 
 from routers import tasks, columns, monitors, incidents, audit, dashboard, ai, sla, events, projects, attachments
+from routers import gamification, time_tracking, comments, notifications  # ANT HILL routers
 from routers.integrations import calendar_router, docs_router, gmail_router, slack_router, oauth_router
 from services.monitor_service import monitor_service
 
@@ -77,6 +78,12 @@ app.include_router(sla.router)
 app.include_router(events.router)
 app.include_router(projects.router)
 app.include_router(attachments.router)
+
+# ANT HILL routers
+app.include_router(gamification.router)
+app.include_router(time_tracking.router)
+app.include_router(comments.router)
+app.include_router(notifications.router)
 
 # Integration routers
 app.include_router(oauth_router)
@@ -144,3 +151,8 @@ def legacy_update_task(task_id: int, task: tasks.TaskUpdate):
 def legacy_delete_task(task_id: int):
     """Legacy endpoint - redirects to /api/tasks/{id}."""
     return tasks.delete_task(task_id)
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
